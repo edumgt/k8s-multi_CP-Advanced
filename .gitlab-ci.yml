@@ -6,7 +6,7 @@ variables:
   DEPLOY_ENV: "prod"
   DEPLOY_NAMESPACE: "data-platform-prod"
   APPLY_RUNNER: "false"
-  SUPPORT_IMAGE_PREFIX: "harbor.local/data-platform"
+  SUPPORT_IMAGE_PREFIX: "ghcr.io/data-platform"
 
 python_sanity:
   stage: validate

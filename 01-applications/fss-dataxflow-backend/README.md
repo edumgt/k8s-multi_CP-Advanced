@@ -5,7 +5,7 @@
 ## CI/CD 흐름
 
 - GitLab Runner 가 pipeline 을 실행
-- Kaniko 로 Harbor `app/*` 이미지 빌드/푸시
+- Kaniko 로 공인 registry 이미지 빌드/푸시
 - `kubectl set image` 로 Kubernetes deployment `backend` 갱신
 
 ## 필요한 GitLab CI 변수
@@ -21,7 +21,7 @@
 
 ## 배포 대상
 
-- Harbor image: `ghcr.io/k8s-fss/fss-dataxflow-backend`
+- Registry image: `ghcr.io/k8s-fss/fss-dataxflow-backend`
 - Kubernetes deployment: `backend`
 
 ## JWT 로그인 연동 (프론트 모달)

@@ -4,7 +4,7 @@ stages:
   - verify
 
 variables:
-  HARBOR_REGISTRY: "harbor.local"
+  HARBOR_REGISTRY: "ghcr.io"
   HARBOR_PROJECT: "app"
   IMAGE_NAME: "${HARBOR_REGISTRY}/${HARBOR_PROJECT}/fss-dataxflow-backend"
   NEXUS_PYPI_INDEX_URL: "http://192.168.56.10:30091/repository/pypi-all/simple"
@@ -17,7 +17,7 @@ variables:
   INGRESS_LB_IP: "192.168.56.240"
 
 default:
-  image: harbor.local/data-platform/platform-ci-tools:docker28.2.2
+  image: docker.io/library/docker:27-cli
 
 workflow:
   rules:

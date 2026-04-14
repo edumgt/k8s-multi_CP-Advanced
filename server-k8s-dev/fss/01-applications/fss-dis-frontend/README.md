@@ -3,7 +3,7 @@
 `dis.fss.or.kr`용 Vue3 + Quasar SPA 프론트엔드입니다.
 
 ## 배포 대상
-- Harbor image: `ghcr.io/k8s-fss/fss-dis-frontend`
+- Registry image: `ghcr.io/k8s-fss/fss-dis-frontend`
 - Kubernetes deployment: `fss-dis-frontend` (`infra/k8s/fss/base/dis-app.yaml`)
 
 ## 환경 파일
