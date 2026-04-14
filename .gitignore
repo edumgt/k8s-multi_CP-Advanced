@@ -1,0 +1,26 @@
+# Workspace / OS
+.DS_Store
+*.log
+.venv/
+.venv*/
+__pycache__/
+.pytest_cache/
+
+# Node / frontend artifacts
+**/node_modules/
+01-applications/**/dist/
+
+# Build / packaging artifacts
+.tmp-k8s-images/
+tmp/pwcap/node_modules/
+packer/output-*/
+packer/packer_cache/
+*.iso
+*.ova
+
+# Local-only secrets
+02-infrastructure/k8s/runner/secret.local.yaml
+
+# Office docs (keep core requirement document tracked)
+*.docx
+!3.docx

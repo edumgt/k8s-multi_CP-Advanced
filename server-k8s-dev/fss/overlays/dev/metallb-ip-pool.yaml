@@ -1,0 +1,17 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: fss-vpn-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 10.111.111.77-10.111.111.77
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: fss-vpn-pool
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+    - fss-vpn-pool

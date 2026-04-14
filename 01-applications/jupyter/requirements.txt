@@ -1,0 +1,6 @@
+jupyterlab>=4.3,<5.0
+ipykernel>=6.29,<7.0
+pandas>=2.2,<3.0
+pymongo>=4.10,<5.0
+redis>=5.2,<6.0
+teradatasql>=20.0

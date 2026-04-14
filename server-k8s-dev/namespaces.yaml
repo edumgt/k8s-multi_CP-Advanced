@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app
+  labels:
+    name: app
+    purpose: application
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dis
+  labels:
+    name: dis
+    purpose: jupyter
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infra
+  labels:
+    name: infra
+    purpose: infrastructure
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sample
+  labels:
+    name: sample
+    purpose: nonprod-temporary
+    lifecycle: non-production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: unitest
+  labels:
+    name: unitest
+    purpose: nonprod-temporary
+    lifecycle: non-production
+
