@@ -11,7 +11,7 @@
 - Control Plane 접속: `ubuntu@192.168.56.10`
 - NFS Target: `192.168.56.20:/nfs`
 - 테스트 네임스페이스: `sample`
-- 테스트 이미지: `docker.io/library/busybox:1.36` (공인 레지스트리)
+- 테스트 이미지: `ghcr.io/edumgt/fss-dis-server-node:latest`
 
 ## 사전 조건
 1. 클러스터가 정상(`kubectl get nodes` 모두 Ready)
@@ -38,7 +38,10 @@ POC_STORAGE_SIZE=20Gi
 cd /home/k8s-fss/server-k8s-dev/fss/storage/rook-ceph-over-nfs
 bash apply-omv-nfs-poc.sh
 bash test-omv-nfs-poc.sh
+# 모든 노드를 자동 감지해 노드별 마운트를 확인 (기본 최대 4개 노드)
 bash node-mount-check.sh
+# 특정 개수만 확인하려면
+MAX_NODES=2 bash node-mount-check.sh
 ```
 
 ## 성공 여부 확인 방법 (핵심)
@@ -87,7 +90,7 @@ kubectl -n sample get events --sort-by=.lastTimestamp | tail -n 40
 ## 자주 발생하는 실패 원인
 1. `ImagePullBackOff`
 - 증상: Pod Pending/ImagePullBackOff
-- 조치: 공인 이미지 사용 확인 (`docker.io/library/busybox:1.36`)
+- 조치: GHCR 이미지 사용 확인 (`ghcr.io/edumgt/fss-dis-server-node:latest`)
 
 2. `Permission denied` (쓰기 실패)
 - 증상: `dd`/`touch` 실패
@@ -108,6 +111,8 @@ kubectl delete pv omv-nfs-pv-poc --ignore-not-found=true
 ## 포함 스크립트
 - `apply-omv-nfs-poc.sh`: PV/PVC/테스트 Pod 생성
 - `test-omv-nfs-poc.sh`: 마운트/쓰기 재검증
-- `node-mount-check.sh`: 노드별 NFS 마운트 검증
+- `node-mount-check.sh`: 노드 자동 감지 기반 NFS 마운트 검증
 - `cleanup-omv-nfs-poc.sh`: 테스트 Pod/PVC 정리
 - `omv-nfs.env.example`: 환경 변수 템플릿
+- `nfs-test-hello-py.yaml`, `hello.py`: Python 기반 NFS 쓰기 검증 샘플
+- `check-rook-ceph-nfs-poc.sh`: (선택) rook-ceph/rook-ceph-nfs 상태 점검 도구

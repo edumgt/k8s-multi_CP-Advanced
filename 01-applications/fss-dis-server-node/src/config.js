@@ -65,3 +65,8 @@ export function isDynamicRouteMode() {
   const mode = String(config.jupyterAccessMode || "dynamic-route").toLowerCase().trim();
   return ["dynamic-route", "dynamic_route", "dynamic", "wildcard"].includes(mode);
 }
+
+export function isIngressPathMode() {
+  const mode = String(config.jupyterAccessMode || "dynamic-route").toLowerCase().trim();
+  return ["ingress-path", "ingress_path", "path-route", "path_route"].includes(mode);
+}

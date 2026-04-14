@@ -1,6 +1,6 @@
 import * as k8s from "@kubernetes/client-node";
 
-import { config, isDynamicRouteMode } from "../config.js";
+import { config, isDynamicRouteMode, isIngressPathMode } from "../config.js";
 import { buildSessionToken } from "../utils/labIdentity.js";
 
 let coreApi;
@@ -138,11 +138,11 @@ function podContainerDetail(pod) {
 }
 
 export function buildSessionSummary({ identity, pod, service, launchImage }) {
-  const dynamic = isDynamicRouteMode();
+  const routed = isDynamicRouteMode() || isIngressPathMode();
   const phase = podPhase(pod);
   const ready = podReady(pod);
 
-  const nodePort = dynamic
+  const nodePort = routed
     ? null
     : service?.spec?.ports?.find((p) => p.port === 8888)?.nodePort || null;
 
@@ -155,9 +155,11 @@ export function buildSessionSummary({ identity, pod, service, launchImage }) {
   } else if (phase === "Failed") {
     status = "failed";
     detail = podContainerDetail(pod) || "Pod failed to start.";
-  } else if (ready && dynamic) {
+  } else if (ready && routed) {
     status = "ready";
-    detail = `JupyterLab is ready on dynamic route ${identity.pod_name}.${config.jupyterDynamicHostSuffix}.`;
+    detail = isIngressPathMode()
+      ? `JupyterLab is ready on ingress path /jupyter/${identity.pod_name}.`
+      : `JupyterLab is ready on dynamic route ${identity.pod_name}.${config.jupyterDynamicHostSuffix}.`;
   } else if (ready && nodePort) {
     status = "ready";
     detail = `JupyterLab is ready on NodePort ${nodePort}.`;
@@ -176,10 +178,10 @@ export function buildSessionSummary({ identity, pod, service, launchImage }) {
     image: pod?.spec?.containers?.[0]?.image || launchImage,
     status,
     phase,
-    ready: dynamic ? ready : ready && Boolean(nodePort),
+    ready: routed ? ready : ready && Boolean(nodePort),
     detail,
     token: buildSessionToken(config.jupyterToken, identity.session_id),
-    node_port: ready && !dynamic ? nodePort : null,
+    node_port: ready && !routed ? nodePort : null,
     created_at: pod?.metadata?.creationTimestamp || null,
   };
 }
@@ -205,7 +207,10 @@ function podLaunchImage(pod) {
 
 export async function createOrEnsureSessionPod({ identity, launchProfile }) {
   const api = kubeClient();
-  const dynamic = isDynamicRouteMode();
+  const routed = isDynamicRouteMode() || isIngressPathMode();
+  const ingressPathMode = isIngressPathMode();
+  const jupyterBaseUrl = ingressPathMode ? `/jupyter/${identity.pod_name}` : "/";
+  const probePath = ingressPathMode ? `${jupyterBaseUrl}/lab` : "/lab";
   const podName = identity.pod_name;
 
   let pod = await readPod(podName);
@@ -228,7 +233,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
           app: "jupyter-session",
           "app.kubernetes.io/name": "jupyter-session",
           "app.kubernetes.io/managed-by": "fss-dis-server-node",
-          "app.kubernetes.io/component": dynamic ? "user-jupyter" : "jupyter-session",
+          "app.kubernetes.io/component": routed ? "user-jupyter" : "jupyter-session",
           "platform.dev/session-id": identity.session_id,
         },
         annotations: {
@@ -241,8 +246,8 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
       spec: {
         restartPolicy: "Always",
         terminationGracePeriodSeconds: 15,
-        hostname: dynamic ? podName : undefined,
-        subdomain: dynamic ? config.jupyterDynamicSubdomain : undefined,
+        hostname: routed ? podName : undefined,
+        subdomain: routed ? config.jupyterDynamicSubdomain : undefined,
         initContainers: [
           {
             name: "restore-workspace",
@@ -281,6 +286,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
               },
               { name: "JUPYTER_ROOT_DIR", value: config.jupyterWorkspaceRoot },
               { name: "JUPYTER_BOOTSTRAP_DIR", value: config.jupyterBootstrapDir },
+              { name: "JUPYTER_BASE_URL", value: jupyterBaseUrl },
               { name: "PLATFORM_LAB_USERNAME", value: identity.username },
               { name: "PLATFORM_LAB_SESSION_ID", value: identity.session_id },
               ...Object.entries(launchProfile.extra_env || {}).map(([name, value]) => ({
@@ -308,14 +314,14 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
               },
             ],
             readinessProbe: {
-              httpGet: { path: "/lab", port: 8888 },
+              httpGet: { path: probePath, port: 8888 },
               initialDelaySeconds: 5,
               periodSeconds: 5,
               timeoutSeconds: 2,
               failureThreshold: 18,
             },
             livenessProbe: {
-              httpGet: { path: "/lab", port: 8888 },
+              httpGet: { path: probePath, port: 8888 },
               initialDelaySeconds: 20,
               periodSeconds: 10,
               timeoutSeconds: 2,
@@ -340,7 +346,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
     });
   }
 
-  if (!dynamic) {
+  if (!routed) {
     const service = await readService(identity.service_name);
     if (!service) {
       await api.createNamespacedService({
@@ -367,7 +373,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
 
   return {
     pod: await readPod(podName),
-    service: dynamic ? null : await readService(identity.service_name),
+    service: routed ? null : await readService(identity.service_name),
   };
 }
 
@@ -382,7 +388,7 @@ export async function deleteSessionPod(identity) {
     if (!isNotFound(error)) throw error;
   }
 
-  if (!isDynamicRouteMode()) {
+  if (!isDynamicRouteMode() && !isIngressPathMode()) {
     try {
       await api.deleteNamespacedService({
         name: identity.service_name,

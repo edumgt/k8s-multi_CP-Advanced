@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nfs-test-hello-py-script
+  namespace: sample
+data:
+  hello.sh: |
+    #!/bin/sh
+    set -eux
+    OMV_UI='http://192.168.56.20'
+    TS="$(date +%s)"
+    TEST_FILE="/mnt/nfs/hello-sh-${TS}.bin"
+    echo "hello from nfs-test-hello-sh"
+    echo "OMV UI: ${OMV_UI}"
+    echo "NFS mount target: /mnt/nfs"
+    df -h /mnt/nfs
+    dd if=/dev/zero of="${TEST_FILE}" bs=1M count=32
+    ls -lh "${TEST_FILE}"
+    du -sh /mnt/nfs || true
+    echo "test finished successfully"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-test-hello-py
+  namespace: sample
+spec:
+  restartPolicy: Never
+  containers:
+    - name: nfs-test
+      image: ghcr.io/edumgt/fss-dis-server-node:latest
+      imagePullPolicy: IfNotPresent
+      command: ["/bin/sh", "/opt/test/hello.sh"]
+      volumeMounts:
+        - name: script
+          mountPath: /opt/test
+        - name: nfs
+          mountPath: /mnt/nfs
+  volumes:
+    - name: script
+      configMap:
+        name: nfs-test-hello-py-script
+        defaultMode: 0755
+    - name: nfs
+      persistentVolumeClaim:
+        claimName: omv-nfs-pvc-poc

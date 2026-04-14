@@ -3,6 +3,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/omv-nfs.env"
 
+# Re-running this script should be idempotent even if a previous tester pod exists.
+kubectl -n "${POC_NAMESPACE}" delete pod omv-nfs-tester --ignore-not-found=true >/dev/null 2>&1 || true
+
 cat <<YAML | kubectl apply -f -
 apiVersion: v1
 kind: PersistentVolume
@@ -41,8 +44,8 @@ metadata:
 spec:
   restartPolicy: Never
   containers:
-    - name: busybox
-      image: docker.io/library/busybox:1.36
+    - name: tester
+      image: ghcr.io/edumgt/fss-dis-server-node:latest
       command: ["/bin/sh", "-c"]
       args:
         - |

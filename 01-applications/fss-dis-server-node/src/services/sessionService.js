@@ -1,4 +1,4 @@
-import { config, isDynamicRouteMode } from "../config.js";
+import { config, isDynamicRouteMode, isIngressPathMode } from "../config.js";
 import { buildLabIdentity } from "../utils/labIdentity.js";
 import { recordLabLaunch, recordLabStop, syncSessionActivity } from "./authService.js";
 import { getUserLabLaunchProfile } from "./governanceService.js";
@@ -30,7 +30,7 @@ function resolveLaunchProfile(launchImage, profile) {
 export async function getLabSession(username) {
   const identity = buildLabIdentity(username);
   const pod = await readPod(identity.pod_name);
-  const service = isDynamicRouteMode() ? null : await readService(identity.service_name);
+  const service = isDynamicRouteMode() || isIngressPathMode() ? null : await readService(identity.service_name);
   const summary = buildSessionSummary({
     identity,
     pod,
@@ -107,6 +107,13 @@ export async function deleteLabSession(username) {
 export function buildConnectResponse(summary) {
   if (!summary?.ready) {
     throw new Error("JupyterLab is not ready yet.");
+  }
+  if (isIngressPathMode()) {
+    const frontend = new URL(config.frontendUrl);
+    return {
+      redirect_url: `${frontend.protocol}//${frontend.hostname}/jupyter/${summary.pod_name}/lab?token=${encodeURIComponent(summary.token)}`,
+      detail: `Connected through ingress path route /jupyter/${summary.pod_name}.`,
+    };
   }
   if (isDynamicRouteMode()) {
     const suffix = String(config.jupyterDynamicHostSuffix || "").trim().replace(/^\.+|\.+$/g, "");

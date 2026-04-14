@@ -14,6 +14,9 @@ const ROUTER_HEADLESS_SERVICE = String(
 const ROUTER_TARGET_NAMESPACE = String(process.env.ROUTER_TARGET_NAMESPACE || "dis").toLowerCase();
 const ROUTER_TARGET_PORT = Number(process.env.ROUTER_TARGET_PORT || 8888);
 const REQUEST_TIMEOUT_MS = Number(process.env.ROUTER_REQUEST_TIMEOUT_MS || 3600000);
+const ROUTER_PATH_PREFIX = String(process.env.ROUTER_PATH_PREFIX || "/jupyter")
+  .trim()
+  .replace(/\/+$/, "");
 
 const POD_NAME_REGEX = /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/;
 
@@ -50,6 +53,22 @@ function buildTargetUrl(podName) {
   return `http://${podName}.${ROUTER_HEADLESS_SERVICE}.${ROUTER_TARGET_NAMESPACE}.svc.cluster.local:${ROUTER_TARGET_PORT}`;
 }
 
+function extractPodNameFromPath(pathname) {
+  if (!pathname) return null;
+  const base = ROUTER_PATH_PREFIX || "/jupyter";
+  const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const prefix = `${base}/`;
+  if (!normalized.startsWith(prefix)) {
+    return null;
+  }
+  const rest = normalized.slice(prefix.length);
+  const podName = rest.split("/")[0];
+  if (!podName || podName.length > 63 || !POD_NAME_REGEX.test(podName)) {
+    return null;
+  }
+  return podName;
+}
+
 const proxy = httpProxy.createProxyServer({
   changeOrigin: true,
   ws: true,
@@ -76,6 +95,7 @@ app.get("/healthz", (_req, res) => {
   res.json({
     status: "ok",
     host_suffix: ROUTER_HOST_SUFFIX,
+    path_prefix: ROUTER_PATH_PREFIX,
     headless_service: ROUTER_HEADLESS_SERVICE,
     target_namespace: ROUTER_TARGET_NAMESPACE,
     target_port: ROUTER_TARGET_PORT,
@@ -89,10 +109,11 @@ app.get("/readyz", (_req, res) => {
 app.use((req, res) => {
   const forwardedHost = req.headers["x-forwarded-host"];
   const host = normalizeHostHeader(forwardedHost || req.headers.host);
-  const podName = extractPodNameFromHost(host);
+  const pathname = String(req.path || req.url || "/").split("?")[0];
+  const podName = extractPodNameFromHost(host) || extractPodNameFromPath(pathname);
   if (!podName) {
     res.status(400).json({
-      detail: `Host must match <pod>.${ROUTER_HOST_SUFFIX}`,
+      detail: `Route must match either <pod>.${ROUTER_HOST_SUFFIX} or ${ROUTER_PATH_PREFIX}/<pod>/...`,
     });
     return;
   }
@@ -104,7 +125,8 @@ const server = http.createServer(app);
 
 server.on("upgrade", (req, socket, head) => {
   const host = normalizeHostHeader(req.headers["x-forwarded-host"] || req.headers.host);
-  const podName = extractPodNameFromHost(host);
+  const pathname = String(req.url || "/").split("?")[0];
+  const podName = extractPodNameFromHost(host) || extractPodNameFromPath(pathname);
   if (!podName) {
     socket.destroy();
     return;
@@ -117,4 +139,3 @@ server.listen(PORT, "0.0.0.0", () => {
   // eslint-disable-next-line no-console
   console.log(`jupyter-pod-router listening on :${PORT}`);
 });
-

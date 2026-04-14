@@ -1,0 +1,352 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: dis-jupyter-shared-pv
+  labels:
+    app.kubernetes.io/name: jupyter-platform-rwx-test
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: 192.168.56.20
+    path: /nfs
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dis-jupyter-shared-pvc
+  namespace: dis
+  labels:
+    app.kubernetes.io/name: jupyter-platform-rwx-test
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: ""
+  volumeName: dis-jupyter-shared-pv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyter-pod-router
+  namespace: dis
+  labels:
+    app.kubernetes.io/name: jupyter-pod-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jupyter-pod-router
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jupyter-pod-router
+    spec:
+      containers:
+        - name: router
+          image: ghcr.io/edumgt/fss-dis-server-node:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cat >/tmp/router.js <<'JS'
+              const http = require("http");
+
+              const PORT = Number(process.env.PORT || "8080");
+              const HOST_SUFFIX = String(process.env.ROUTER_HOST_SUFFIX || "service.jupyter.fss.or.kr").toLowerCase();
+              const HEADLESS = String(process.env.ROUTER_HEADLESS_SERVICE || "jupyter-named-pod").toLowerCase();
+              const NAMESPACE = String(process.env.ROUTER_TARGET_NAMESPACE || "dis").toLowerCase();
+              const TARGET_PORT = Number(process.env.ROUTER_TARGET_PORT || "8888");
+
+              function upstreamCandidates(pod) {
+                return [
+                  `${pod}.${HEADLESS}.${NAMESPACE}.svc.cluster.local`,
+                  `${HEADLESS}.${NAMESPACE}.svc.cluster.local`,
+                ];
+              }
+
+              function proxyTry(req, res, hosts, idx, lastErr) {
+                if (idx >= hosts.length) {
+                  res.writeHead(502, { "Content-Type": "text/plain; charset=utf-8" });
+                  res.end(`Upstream proxy failed: ${lastErr || "no upstream"}\n`);
+                  return;
+                }
+                const upstream = hosts[idx];
+                const opts = {
+                  hostname: upstream,
+                  port: TARGET_PORT,
+                  path: req.url || "/",
+                  method: req.method || "GET",
+                  headers: req.headers,
+                  timeout: 20000,
+                };
+                const p = http.request(opts, (u) => {
+                  const headers = { ...u.headers };
+                  delete headers["transfer-encoding"];
+                  res.writeHead(u.statusCode || 502, headers);
+                  u.pipe(res);
+                });
+                p.on("error", (err) => proxyTry(req, res, hosts, idx + 1, err.message));
+                req.pipe(p);
+              }
+
+              const server = http.createServer((req, res) => {
+                if ((req.url || "") === "/healthz" || (req.url || "") === "/readyz") {
+                  const payload = JSON.stringify({
+                    status: "ok",
+                    host_suffix: HOST_SUFFIX,
+                    target_namespace: NAMESPACE,
+                    target_port: TARGET_PORT,
+                  });
+                  res.writeHead(200, { "Content-Type": "application/json" });
+                  res.end(payload);
+                  return;
+                }
+
+                const hostRaw = String(req.headers["x-forwarded-host"] || req.headers.host || "")
+                  .split(",")[0]
+                  .split(":")[0]
+                  .trim()
+                  .toLowerCase();
+                const expected = `.${HOST_SUFFIX}`;
+                if (!hostRaw.endsWith(expected)) {
+                  res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+                  res.end(`Host must match <pod>.${HOST_SUFFIX}\n`);
+                  return;
+                }
+                const pod = hostRaw.slice(0, -expected.length);
+                if (!pod) {
+                  res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+                  res.end("Invalid pod name\n");
+                  return;
+                }
+                proxyTry(req, res, upstreamCandidates(pod), 0, "");
+              });
+
+              server.listen(PORT, "0.0.0.0");
+              JS
+              node /tmp/router.js
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PORT
+              value: "8080"
+            - name: ROUTER_HOST_SUFFIX
+              value: "platform.local"
+            - name: ROUTER_HEADLESS_SERVICE
+              value: "jupyter-named-pod"
+            - name: ROUTER_TARGET_NAMESPACE
+              value: "dis"
+            - name: ROUTER_TARGET_PORT
+              value: "8888"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: shared-rwx
+              mountPath: /shared
+      volumes:
+        - name: shared-rwx
+          persistentVolumeClaim:
+            claimName: dis-jupyter-shared-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter-pod-router
+  namespace: dis
+spec:
+  selector:
+    app.kubernetes.io/name: jupyter-pod-router
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter-named-pod
+  namespace: dis
+  labels:
+    app.kubernetes.io/component: user-jupyter-routing
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/component: user-jupyter
+  ports:
+    - name: http
+      port: 8888
+      targetPort: 8888
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jupyter-user-wildcard
+  namespace: dis
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: "*.platform.local"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jupyter-pod-router
+                port:
+                  number: 8080
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: demo-user
+  namespace: dis
+  labels:
+    app.kubernetes.io/component: user-jupyter
+spec:
+  hostname: demo-user
+  subdomain: jupyter-named-pod
+  containers:
+    - name: notebook
+      image: ghcr.io/edumgt/fss-dis-server-node:latest
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/sh
+        - -c
+        - |
+          mkdir -p /workspace/user-home
+          echo "demo-user alive $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /workspace/user-home/demo-user-alive.txt
+          node -e 'const http=require("http"),fs=require("fs"),path=require("path");const root="/workspace/user-home";http.createServer((req,res)=>{const p=path.join(root, (req.url||"/").replace(/^\//,"") || "demo-user-alive.txt");fs.readFile(p,(e,d)=>{if(e){res.statusCode=404;res.end("not found\\n");return;}res.end(d);});}).listen(8888,"0.0.0.0");'
+      ports:
+        - containerPort: 8888
+          name: http
+      readinessProbe:
+        tcpSocket:
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
+      livenessProbe:
+        tcpSocket:
+          port: http
+        initialDelaySeconds: 30
+        periodSeconds: 20
+      volumeMounts:
+        - name: shared-rwx
+          mountPath: /workspace/user-home
+  volumes:
+    - name: shared-rwx
+      persistentVolumeClaim:
+        claimName: dis-jupyter-shared-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyter-platform-frontend
+  namespace: dis
+  labels:
+    app.kubernetes.io/name: jupyter-platform-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jupyter-platform-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jupyter-platform-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/edumgt/fss-dis-server-node:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mkdir -p /shared
+              echo "frontend alive $(date -u +%Y-%m-%dT%H:%M:%SZ)" > /shared/frontend-alive.txt
+              cat > /shared/index.html <<'HTML'
+              <!doctype html>
+              <html>
+              <head><meta charset="utf-8"><title>Jupyter RWX Frontend</title></head>
+              <body>
+                <h1>Jupyter Platform RWX Frontend</h1>
+                <p>Shared volume mounted at <code>/shared</code>.</p>
+                <ul>
+                  <li><a href="/demo-user-alive.txt">demo-user-alive.txt</a></li>
+                  <li><a href="/frontend-alive.txt">frontend-alive.txt</a></li>
+                </ul>
+              </body>
+              </html>
+              HTML
+              node -e 'const http=require("http"),fs=require("fs"),path=require("path");const root="/shared";http.createServer((req,res)=>{const rel=(req.url||"/").replace(/^\//,"")||"index.html";const p=path.join(root,rel);fs.readFile(p,(e,d)=>{if(e){res.statusCode=404;res.end("not found\\n");return;}res.end(d);});}).listen(8080,"0.0.0.0");'
+          ports:
+            - containerPort: 8080
+              name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: shared-rwx
+              mountPath: /shared
+      volumes:
+        - name: shared-rwx
+          persistentVolumeClaim:
+            claimName: dis-jupyter-shared-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter-platform-frontend
+  namespace: dis
+spec:
+  selector:
+    app.kubernetes.io/name: jupyter-platform-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jupyter-platform-frontend
+  namespace: dis
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: rwx.platform.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jupyter-platform-frontend
+                port:
+                  number: 80

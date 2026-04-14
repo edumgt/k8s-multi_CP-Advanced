@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="${JUPYTER_ROOT_DIR:-/workspace}"
+BASE_URL="${JUPYTER_BASE_URL:-/}"
 
 mkdir -p "${ROOT_DIR}"
 
@@ -13,6 +14,7 @@ exec jupyter lab \
   --port=8888 \
   --no-browser \
   --allow-root \
+  --ServerApp.base_url="${BASE_URL}" \
   --ServerApp.token="${JUPYTER_TOKEN:-platform123}" \
   --ServerApp.allow_origin="*" \
   --ServerApp.root_dir="${ROOT_DIR}"
