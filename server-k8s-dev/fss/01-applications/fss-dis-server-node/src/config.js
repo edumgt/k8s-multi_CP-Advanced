@@ -38,7 +38,7 @@ export const config = {
   labGovernanceEnabled: parseBool(process.env.LAB_GOVERNANCE_ENABLED, true),
   jupyterImage:
     process.env.JUPYTER_IMAGE ||
-    `${(process.env.HARBOR_REGISTRY || "10.111.111.72").replace(/\/+$/, "")}/${(
+    `${(process.env.HARBOR_REGISTRY || "ghcr.io").replace(/\/+$/, "")}/${(
       process.env.HARBOR_PROJECT || "dis"
     ).replace(/^\/+|\/+$/g, "")}/jupyter-teradata-extention:latest`,
   jupyterAccessMode: process.env.JUPYTER_ACCESS_MODE || "dynamic-route",
@@ -54,7 +54,7 @@ export const config = {
   controlPlaneUsername: process.env.CONTROL_PLANE_USERNAME || "admin@test.com",
   controlPlanePassword: process.env.CONTROL_PLANE_PASSWORD || "123456",
 
-  harborRegistry: process.env.HARBOR_REGISTRY || "10.111.111.72",
+  harborRegistry: process.env.HARBOR_REGISTRY || "ghcr.io",
   harborProject: process.env.HARBOR_PROJECT || "dis",
 
   frontendUrl: process.env.FRONTEND_URL || "http://dis.fss.or.kr",

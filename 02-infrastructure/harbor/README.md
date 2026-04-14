@@ -5,9 +5,9 @@
 ## 용도
 
 - 사용자 workspace 를 Kaniko Job 으로 이미지화
-- 이미지 경로: `10.111.111.72/dis/jupyter-user-<session-id>:latest`
+- 이미지 경로: `ghcr.io/k8s-fss/jupyter-user-<session-id>:latest`
 - 다음 로그인 시 backend 가 최신 restorable snapshot image 를 우선 선택
-- 플랫폼 기본 app/runtime 이미지를 `10.111.111.72/library/*` 에서 pull
+- 플랫폼 기본 app/runtime 이미지를 `(public registries: docker.io/quay.io/registry.k8s.io/ghcr.io)` 에서 pull
 
 ## 필요한 설정
 
@@ -24,4 +24,4 @@
 
 - snapshot publish 는 backend 가 Kubernetes Job 을 생성해서 수행합니다.
 - restore pull 이 필요하므로 Harbor project 는 public 으로 두거나 별도 imagePullSecret 전략을 준비하세요.
-- air-gap 운영 기준 기본 이미지는 `10.111.111.72/library/*` 로 preload/pull 하도록 맞춥니다.
+- air-gap 운영 기준 기본 이미지는 `(public registries: docker.io/quay.io/registry.k8s.io/ghcr.io)` 로 preload/pull 하도록 맞춥니다.

@@ -6,7 +6,7 @@ metadata:
 type: kubernetes.io/dockerconfigjson
 stringData:
   .dockerconfigjson: |
-    {"auths":{"10.111.111.72":{"username":"robot$ci-cd","password":"BNg1mh1HphgxhtUydyUDANaNbemZCHzB"}}}
+    {"auths":{"ghcr.io":{"username":"robot$ci-cd","password":"BNg1mh1HphgxhtUydyUDANaNbemZCHzB"}}}
 ---
 apiVersion: v1
 kind: Secret
@@ -16,7 +16,7 @@ metadata:
 type: kubernetes.io/dockerconfigjson
 stringData:
   .dockerconfigjson: |
-    {"auths":{"10.111.111.72":{"username":"robot$dis","password":"7QQnDQ0yY11fY99iLz4xtocW0MMhYUnC"}}}
+    {"auths":{"ghcr.io":{"username":"robot$dis","password":"7QQnDQ0yY11fY99iLz4xtocW0MMhYUnC"}}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -37,7 +37,7 @@ spec:
       - name: harbor-robot-cicd
       containers:
       - name: app
-        image: 10.111.111.72/library/jupyterlab-teradata20:1.9
+        image: ghcr.io/k8s-fss/jupyterlab-teradata20:1.9
         imagePullPolicy: Always
         command: ["/bin/sh","-c","sleep 36000"]
 ---
@@ -60,7 +60,7 @@ spec:
       - name: harbor-robot-cicd
       containers:
       - name: app
-        image: 10.111.111.72/library/teradata/jupyterlab-extensions:4.0.2
+        image: ghcr.io/k8s-fss/jupyterlab-extensions:4.0.2
         imagePullPolicy: Always
         command: ["/bin/sh","-c","sleep 36000"]
 ---
@@ -83,7 +83,7 @@ spec:
       - name: harbor-robot-dis
       containers:
       - name: app
-        image: 10.111.111.72/dis/jupter-teradata-fss:0.0.1
+        image: ghcr.io/k8s-fss/jupter-teradata-fss:0.0.1
         imagePullPolicy: Always
         command: ["/bin/sh","-c","sleep 36000"]
 

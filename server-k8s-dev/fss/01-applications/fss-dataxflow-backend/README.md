@@ -21,7 +21,7 @@
 
 ## 배포 대상
 
-- Harbor image: `10.111.111.72/${HARBOR_PROJECT:-app}/fss-dataxflow-backend`
+- Harbor image: `ghcr.io/k8s-fss/fss-dataxflow-backend`
 - Kubernetes deployment: `backend`
 
 ## JWT 로그인 연동 (프론트 모달)

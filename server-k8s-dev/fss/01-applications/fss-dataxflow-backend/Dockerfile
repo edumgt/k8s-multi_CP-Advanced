@@ -1,4 +1,4 @@
-FROM 10.111.111.72/library/platform-python:3.12-slim
+FROM docker.io/library/python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

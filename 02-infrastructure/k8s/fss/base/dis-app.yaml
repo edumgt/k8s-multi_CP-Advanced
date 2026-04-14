@@ -10,7 +10,7 @@ data:
   K8S_APP_NAMESPACE: app
   K8S_USER_NAMESPACE: dis
   LAB_GOVERNANCE_ENABLED: "true"
-  JUPYTER_IMAGE: 10.111.111.72:80/dis/jupter-teradata-fss:0.0.1
+  JUPYTER_IMAGE: ghcr.io/k8s-fss/jupter-teradata-fss:0.0.1
   JUPYTER_ACCESS_MODE: dynamic-route
   JUPYTER_DYNAMIC_HOST_SUFFIX: service.jupyter.fss.or.kr
   JUPYTER_DYNAMIC_SCHEME: https
@@ -253,7 +253,7 @@ spec:
       serviceAccountName: fss-dis-server
       containers:
         - name: collector
-          image: 10.111.111.72:80/app/fss-dis-metrics-collector:20260414-1
+          image: ghcr.io/k8s-fss/fss-dis-metrics-collector:20260414-1
           imagePullPolicy: IfNotPresent
           command:
             - python
@@ -299,7 +299,7 @@ spec:
       serviceAccountName: fss-dis-server
       containers:
         - name: server
-          image: 10.111.111.72:80/app/fss-dis-server-node:latest
+          image: ghcr.io/k8s-fss/fss-dis-server-node:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -374,7 +374,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 10.111.111.72:80/app/fss-dis-frontend:latest
+          image: ghcr.io/k8s-fss/fss-dis-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

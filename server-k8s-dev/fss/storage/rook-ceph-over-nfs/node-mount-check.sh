@@ -21,7 +21,7 @@ items:
     nodeName: hdlamst-devl
     containers:
     - name: c
-      image: 10.111.111.72:80/library/busybox:latest
+      image: docker.io/library/busybox:1.36
       command: ["/bin/sh","-c","echo node=hdlamst-devl; df -h /mnt; sleep 120"]
       volumeMounts: [{name: nfsvol, mountPath: /mnt}]
     volumes: [{name: nfsvol, nfs: {server: ${OMV_NFS_SERVER}, path: ${OMV_NFS_EXPORT}}}]
@@ -33,7 +33,7 @@ items:
     nodeName: hdlawork1-devl
     containers:
     - name: c
-      image: 10.111.111.72:80/library/busybox:latest
+      image: docker.io/library/busybox:1.36
       command: ["/bin/sh","-c","echo node=hdlawork1-devl; df -h /mnt; sleep 120"]
       volumeMounts: [{name: nfsvol, mountPath: /mnt}]
     volumes: [{name: nfsvol, nfs: {server: ${OMV_NFS_SERVER}, path: ${OMV_NFS_EXPORT}}}]
@@ -45,7 +45,7 @@ items:
     nodeName: hdlawork2-devl
     containers:
     - name: c
-      image: 10.111.111.72:80/library/busybox:latest
+      image: docker.io/library/busybox:1.36
       command: ["/bin/sh","-c","echo node=hdlawork2-devl; df -h /mnt; sleep 120"]
       volumeMounts: [{name: nfsvol, mountPath: /mnt}]
     volumes: [{name: nfsvol, nfs: {server: ${OMV_NFS_SERVER}, path: ${OMV_NFS_EXPORT}}}]
@@ -57,7 +57,7 @@ items:
     nodeName: hdlaworkml-devl
     containers:
     - name: c
-      image: 10.111.111.72:80/library/busybox:latest
+      image: docker.io/library/busybox:1.36
       command: ["/bin/sh","-c","echo node=hdlaworkml-devl; df -h /mnt; sleep 120"]
       volumeMounts: [{name: nfsvol, mountPath: /mnt}]
     volumes: [{name: nfsvol, nfs: {server: ${OMV_NFS_SERVER}, path: ${OMV_NFS_EXPORT}}}]

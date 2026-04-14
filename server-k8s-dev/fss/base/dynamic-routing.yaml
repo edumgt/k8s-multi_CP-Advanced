@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
         - name: router
-          image: 10.111.111.72:80/library/jupyter-pod-router:latest
+          image: ghcr.io/k8s-fss/jupyter-pod-router:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

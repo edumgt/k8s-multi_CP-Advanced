@@ -107,9 +107,9 @@ Python 기반 Jupyter 관리 로직을 Node 기반으로 전환하기 위해 아
 
 현재 fss base는 아래 이미지를 사용합니다.
 
-- `10.111.111.72:80/library/mongo:8.2.5`
-- `10.111.111.72:80/library/redis:8.6.1`
-- `10.111.111.72/library/jupyter-pod-router:latest`
+- `docker.io/library/mongo:8.2.5`
+- `docker.io/library/redis:8.6.1`
+- `ghcr.io/k8s-fss/jupyter-pod-router:latest`
 
 ## Secret Management
 

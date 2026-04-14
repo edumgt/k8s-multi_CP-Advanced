@@ -11,9 +11,9 @@
 - MongoDB/Redis는 PV 기반 지속성 전제로 구성.
 
 2. Harbor/GitLab/배포 경로 확인
-- Harbor(10.111.111.72) 저장소 목록/증감 확인.
+- 공인 레지스트리(ghcr.io/docker.io/quay.io) 이미지 기준으로 점검.
 - GitLab(10.111.111.71) 프로젝트 존재/생성시각 확인.
-- bastion 중심 작업 원칙으로 전환하여 서버 경로 산출물 누적.
+- control-plane VM 중심 작업 원칙으로 전환하여 서버 경로 산출물 누적.
 
 3. OMV NFS 실측 검증
 - 모든 K8s 노드에서 `192.168.10.2:2049` 접근 및 마운트 가능 확인.
@@ -49,7 +49,7 @@
 
 ## 빠른 실행
 ```bash
-cd /home/disadm/fss-support/k8s-dev/fss/storage/rook-ceph-over-nfs
+cd /home/ubuntu/fss-support/k8s-dev/fss/storage/rook-ceph-over-nfs
 cp omv-nfs.env.example omv-nfs.env
 # 실제 값 확인 후 실행
 bash apply-omv-nfs-poc.sh
@@ -63,7 +63,7 @@ bash node-mount-check.sh
 
 2. K8s에서 즉시 재검증
 ```bash
-cd /home/disadm/fss-support/k8s-dev/fss/storage/rook-ceph-over-nfs
+cd /home/ubuntu/fss-support/k8s-dev/fss/storage/rook-ceph-over-nfs
 bash test-omv-nfs-poc.sh
 bash node-mount-check.sh
 ```

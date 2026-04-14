@@ -42,7 +42,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: busybox
-      image: 10.111.111.72:80/library/busybox:latest
+      image: docker.io/library/busybox:1.36
       command: ["/bin/sh", "-c"]
       args:
         - |

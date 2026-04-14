@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: 10.111.111.72/library/platform-postgres:16-alpine
+          image: docker.io/library/postgres:16-alpine
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432
