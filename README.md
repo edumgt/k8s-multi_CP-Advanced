@@ -85,3 +85,15 @@
 | kubeconfig | BasicAuth 대신 `admin.conf`/서비스 계정 토큰 사용 | 최신 K8s에서 BasicAuth 비활성화가 일반적 |
 | LoadBalancer IP | `192.168.56.240` 단일 표준 사용 | 운영/문서/모니터링의 기준점 일치 |
 | 문서 관리 | 과거 로그와 운영 기준 문서 분리 | 재현성과 현재 운영 정합성 확보 |
+
+## Headlamp 접속 토큰 (100일)
+
+| 항목 | 값 | 설명 |
+|---|---|---|
+| ServiceAccount | `app/headlamp-admin` | Headlamp 로그인용 토큰 발급 대상 |
+| 발급 명령 | `kubectl -n app create token headlamp-admin --duration=2400h` | 100일(2400시간) 유효 토큰 생성 |
+| 만료 시각(UTC) | `2026-07-25 07:52:24 UTC` | 발급 시점 기준 100일 |
+
+```text
+eyJhbGciOiJSUzI1NiIsImtpZCI6IlVpd2pobTJJYm5jdWFSWE9SQlJTMy1DbHhtZE5mNGlZRXU5QVptSmNYN2MifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiXSwiZXhwIjoxNzg0OTY1OTQ0LCJpYXQiOjE3NzYzMjU5NDQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwianRpIjoiZjljN2VlMDgtNjc2MC00YzNkLWJiOGUtNTRjZTNkZjQ5YmEyIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJhcHAiLCJzZXJ2aWNlYWNjb3VudCI6eyJuYW1lIjoiaGVhZGxhbXAtYWRtaW4iLCJ1aWQiOiIxYjlhODYwZC1mOTE2LTQxZDItOTZhOC1hOThiYWYyMjc1ZmQifX0sIm5iZiI6MTc3NjMyNTk0NCwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OmFwcDpoZWFkbGFtcC1hZG1pbiJ9.yCsITUW1PcaA1BCFmNV9mtao6LeqsUd5IBl3Un64TvU3yY-yKU3aWdqUsKHKOM_maip5M_VzhHmt2jZudOpRbkEkFEqTY4DyXsVKWHbyvKXKppTOe3WpFs5q-BmFrDBLeXpqvHPRcWh64-o1MFtj4cXzDWJc7HxZ4UbDx-s7plsN2uP4ZEykB_jxYf9MSKBM615qv_g0ytj3KKQKhAuNLgGHRFToUC2SBz_LH2DyM28F5mqmKMOefXAMb5qnE0EoMLbxdANpueUVNz8iFCflIu1Yn4QFZ860QZa_8phpGth7o--heakdQaZVi9nojD5iEf-yxVIXknHATW8kYyNZ7w
+```

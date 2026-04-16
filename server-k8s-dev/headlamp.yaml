@@ -36,8 +36,23 @@ spec:
       containers:
         - name: headlamp
           image: ghcr.io/headlamp-k8s/headlamp:v0.41.0
+          args:
+            - -in-cluster
+            - -base-url=/headlamp-dashboard
           ports:
             - containerPort: 4466
+          readinessProbe:
+            httpGet:
+              path: /headlamp-dashboard/
+              port: 4466
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /headlamp-dashboard/
+              port: 4466
+            initialDelaySeconds: 30
+            periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service
