@@ -40,8 +40,8 @@ kubectl apply -k infra/k8s/fss/overlays/prod
 
 `overlays/dev`에는 아래가 포함되어 있습니다.
 
-- `metallb-system/fss-vpn-pool` IPAddressPool (`10.111.111.77`)
-- `ingress-nginx/ingress-nginx-controller` LoadBalancer 고정 IP (`10.111.111.77`)
+- `metallb-system/fss-vpn-pool` IPAddressPool (`192.168.56.240`)
+- `ingress-nginx/ingress-nginx-controller` LoadBalancer 고정 IP (`192.168.56.240`)
 
 적용 후 확인:
 
@@ -53,8 +53,8 @@ kubectl -n app get ingress fss-dis
 
 VPN 브라우저 접속:
 
-- `http://10.111.111.77` (도메인 없이 즉시 접근)
-- 도메인 준비 후 `dis.fss.or.kr -> 10.111.111.77` DNS 연결
+- `http://192.168.56.240` (도메인 없이 즉시 접근)
+- 도메인 준비 후 `dis.fss.or.kr -> 192.168.56.240` DNS 연결
 
 ## Dynamic Route Design
 
