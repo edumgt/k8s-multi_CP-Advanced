@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
         - name: redis
-          image: docker.io/library/redis:8.6.1
+          image: harbor.local/library/redis:8.6.1
           imagePullPolicy: IfNotPresent
           command:
             - redis-server

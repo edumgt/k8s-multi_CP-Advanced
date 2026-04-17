@@ -299,7 +299,7 @@ spec:
       serviceAccountName: fss-dis-server
       containers:
         - name: server
-          image: ghcr.io/k8s-fss/fss-dis-server-node:latest
+          image: harbor.local/app/fss-adw-server-node:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -374,7 +374,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/k8s-fss/fss-dis-frontend:latest
+          image: harbor.local/app/fss-adw-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

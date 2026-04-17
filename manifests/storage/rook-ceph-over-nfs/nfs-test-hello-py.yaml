@@ -28,7 +28,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: nfs-test
-      image: ghcr.io/edumgt/fss-dis-server-node:latest
+      image: harbor.local/app/fss-adw-server-node:latest
       imagePullPolicy: IfNotPresent
       command: ["/bin/sh", "/opt/test/hello.sh"]
       volumeMounts:

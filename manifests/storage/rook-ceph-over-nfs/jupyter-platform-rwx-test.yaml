@@ -50,7 +50,7 @@ spec:
     spec:
       containers:
         - name: router
-          image: ghcr.io/edumgt/fss-dis-server-node:latest
+          image: harbor.local/app/fss-adw-server-node:latest
           imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
@@ -231,7 +231,7 @@ spec:
   subdomain: jupyter-named-pod
   containers:
     - name: notebook
-      image: ghcr.io/edumgt/fss-dis-server-node:latest
+      image: harbor.local/app/fss-adw-server-node:latest
       imagePullPolicy: IfNotPresent
       command:
         - /bin/sh
@@ -280,7 +280,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/edumgt/fss-dis-server-node:latest
+          image: harbor.local/app/fss-adw-server-node:latest
           imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
