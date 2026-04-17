@@ -1,26 +1,49 @@
-# Workspace / OS
+# OS / editor
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
 *.log
-.venv/
-.venv*/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
 __pycache__/
+*.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
 
-# Node / frontend artifacts
+# Node / frontend
 **/node_modules/
-01-applications/**/dist/
+**/dist/
+**/.vite/
+**/.npm/
 
-# Build / packaging artifacts
-.tmp-k8s-images/
-tmp/pwcap/node_modules/
-packer/output-*/
-packer/packer_cache/
-*.iso
-*.ova
+# Env / local config
+.env
+.env.*
+!.env.example
+kubeconfig
+*.local.yaml
+*.local.yml
 
-# Local-only secrets
-02-infrastructure/k8s/runner/secret.local.yaml
+# Archives / bundles
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.sha256
 
-# Office docs (keep core requirement document tracked)
-*.docx
-!3.docx
+# Offline GPU bundle artifacts (keep scripts/docs, ignore generated payload)
+gpu-offline-ubuntu24/debs/
+
+# Misc tmp
+tmp/
+.tmp/

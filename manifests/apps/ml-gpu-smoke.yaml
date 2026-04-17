@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ml-gpu-smoke
+  namespace: app
+  labels:
+    app.kubernetes.io/name: ml-gpu-smoke
+spec:
+  restartPolicy: Never
+  # runtimeClassName: nvidia
+  containers:
+    - name: cuda
+      image: 192.168.56.10:30092/app/ml-cuda-base:12.5.1-ubuntu24.04
+      imagePullPolicy: IfNotPresent
+      command:
+        - /bin/bash
+        - -lc
+        - |
+          echo "[ml-gpu-smoke] nvidia-smi"
+          nvidia-smi
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+        requests:
+          nvidia.com/gpu: "1"
