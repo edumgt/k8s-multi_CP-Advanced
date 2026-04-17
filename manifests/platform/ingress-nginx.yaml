@@ -443,7 +443,7 @@ spec:
               fieldPath: metadata.namespace
         - name: LD_PRELOAD
           value: /usr/local/lib/libmimalloc.so
-        image: quay.io/ingress-nginx/controller:v1.14.1
+        image: harbor.local/data-platform/platform-ingress-nginx-controller:v1.14.1
         imagePullPolicy: IfNotPresent
         lifecycle:
           preStop:
