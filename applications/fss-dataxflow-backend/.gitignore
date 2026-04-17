@@ -1,9 +1,0 @@
-__pycache__/
-.pytest_cache/
-.mypy_cache/
-.venv/
-venv/
-dist/
-node_modules/
-.DS_Store
-kubeconfig

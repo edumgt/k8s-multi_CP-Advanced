@@ -51,7 +51,7 @@ flowchart TB
 
 | 폴더 | 구성 내용 | 비고 |
 |---|---|---|
-| `applications/` | 앱 소스(backend/frontend/router/jupyter/airflow) | 빌드/이미지 생성 대상 |
+| `applications/` | 앱 소스(backend/frontend/router/jupyter) | 빌드/이미지 생성 대상 |
 | `manifests/` | Kubernetes 배포 매니페스트 원본 | dev/prod 오버레이 포함 |
 | `infra/` | VM IP별 인벤토리 문서 | `server종류.md` 11개 |
 
@@ -61,11 +61,8 @@ flowchart TB
 |---|---|---|
 | `applications/fss-dis-server-node` | DIS 거버넌스 API 서버 | Node.js 22, Express 5 |
 | `applications/fss-dis-frontend` | DIS 프론트엔드 | Vue 3, Quasar, Vite |
-| `applications/fss-dataxflow-backend` | DataXFlow API 서버 | FastAPI, Uvicorn |
-| `applications/fss-dataxflow-frontend` | DataXFlow 프론트엔드 | Vue 3, Quasar, Vite |
 | `applications/jupyter-pod-router` | Jupyter named pod 라우터 | Node.js 22, http-proxy |
 | `applications/jupyter` | 사용자 Jupyter 이미지 베이스 | JupyterLab, pandas, teradatasql |
-| `applications/fss-dataxflow-airflow` | ELT 배치 오케스트레이션 | Airflow DAG + Python deps |
 
 ## manifests 구성 상세
 
@@ -85,10 +82,9 @@ flowchart TB
 | 영역 | 스택 |
 |---|---|
 | Backend (DIS) | Node.js 22, Express 5, Socket.io, Mongoose, ioredis, `@kubernetes/client-node` |
-| Backend (DataXFlow) | Python, FastAPI, Uvicorn, Pydantic Settings, PyJWT, Kubernetes Python Client, PyMongo, Redis, SQLAlchemy |
 | Frontend | Vue 3, Quasar, Vite, Axios, Chart.js, AG Grid |
 | Router | Node.js 22, Express 5, http-proxy |
-| Data/Batch | JupyterLab, pandas, Airflow, requests |
+| Data/Batch | JupyterLab, pandas |
 | Kubernetes | Kustomize overlays(dev/prod), Ingress-NGINX, MetalLB, Calico, Metrics Server |
 | Data Services | MongoDB, Redis, NFS (`192.168.56.20`) |
 

@@ -1,9 +1,9 @@
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 WORKDIR /app
 
 ARG APP_ENV=dev
-ARG NPM_REGISTRY=https://registry.npmjs.org/
+ARG NPM_REGISTRY=http://192.168.56.31:8081/repository/npm-all/
 ARG NPM_AUTH_B64
 
 COPY package.json ./
@@ -13,6 +13,7 @@ RUN cp ".env.${APP_ENV}" .env
 RUN rm -f .npmrc
 RUN if [ -n "${NPM_REGISTRY:-}" ]; then \
       npm config set registry "${NPM_REGISTRY}"; \
+      npm config set @jridgewell:registry "https://registry.npmjs.org/"; \
       if [ -n "${NPM_AUTH_B64:-}" ]; then \
         registry_scope="$(printf '%s' "${NPM_REGISTRY}" | sed -e 's#^https\?://##' -e 's#/*$##')"; \
         npm config set "//${registry_scope}/:_auth" "${NPM_AUTH_B64}"; \
@@ -23,7 +24,9 @@ RUN if [ -n "${NPM_REGISTRY:-}" ]; then \
 COPY . .
 
 ARG VITE_API_BASE_URL=
+ARG VITE_BASE_PATH=/fss-dis-frontend/
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 
 RUN npm run build
 
