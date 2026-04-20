@@ -5,7 +5,7 @@
 | 하이퍼바이저 | VMware |
 | Control Plane | `192.168.56.10` |
 | Worker | `192.168.56.11~13` |
-| General VM | `192.168.56.20`, `192.168.56.31~35` |
+| General VM | `192.168.56.20`, `192.168.56.31`, `192.168.56.32`, `192.168.56.34~35` |
 | MetalLB EIP | `192.168.56.240` |
 
 ## 시스템 구성도
@@ -29,7 +29,7 @@ flowchart TB
     subgraph GVM[General VM Pool]
       V31[192.168.56.31\nGeneral VM]
       V32[192.168.56.32\nGeneral VM]
-      V33[192.168.56.33\nGeneral VM]
+      V33[192.168.56.33\nGitLab Server]
       V34[192.168.56.34\nGeneral VM]
       V35[192.168.56.35\nGeneral VM]
     end

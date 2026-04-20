@@ -253,11 +253,12 @@ spec:
       serviceAccountName: fss-dis-server
       containers:
         - name: collector
-          image: ghcr.io/k8s-fss/fss-dis-metrics-collector:20260414-1
+          image: python:3.12-slim
           imagePullPolicy: IfNotPresent
           command:
-            - python
-            - /opt/platform/jobs/k8s_metrics_collector.py
+            - sh
+            - -lc
+            - pip install --no-cache-dir kubernetes pymongo && exec python /opt/platform/jobs/k8s_metrics_collector.py
           envFrom:
             - configMapRef:
                 name: fss-dis-server-config
