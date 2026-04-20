@@ -19,10 +19,17 @@ function splitCsv(value) {
     .filter(Boolean);
 }
 
+function normalizeBasePath(value, fallback = "/") {
+  const raw = String(value || fallback).trim();
+  if (!raw || raw === "/") return "/";
+  return `/${raw.replace(/^\/+|\/+$/g, "")}`;
+}
+
 export const config = {
   port: parseNumber(process.env.PORT, 3000),
   nodeEnv: process.env.NODE_ENV || "development",
   appName: process.env.APP_NAME || "fss-dis-server-node",
+  backendBasePath: normalizeBasePath(process.env.BACKEND_BASE_PATH, "/fss-dis-server"),
   mongoUri:
     process.env.MONGO_URI ||
     "mongodb://root:root-password@mongo.infra.svc.cluster.local:27017/fss_dis?authSource=admin",

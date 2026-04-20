@@ -107,7 +107,7 @@
               <div class="section-title">JWT Login</div>
               <div class="card-title">플랫폼 로그인</div>
               <p class="muted">
-                사이트 첫 화면은 로그인 전용 화면입니다. 백엔드 JWT 로그인(`/api/auth/login`) 성공 후
+                사이트 첫 화면은 로그인 전용 화면입니다. 백엔드 JWT 로그인(`/fss-dis-server/api/auth/login`) 성공 후
                 사용자 role(user/admin)에 맞는 화면으로 이동합니다.
               </p>
               <div class="admin-login-grid">
@@ -1243,9 +1243,8 @@ import { Notify } from "quasar";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 
-const browserProtocol = typeof window !== "undefined" ? window.location.protocol : "http:";
-const browserHost = typeof window !== "undefined" ? window.location.hostname : "dis.fss.or.kr";
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || `${browserProtocol}//${browserHost}`;
+const browserOrigin = typeof window !== "undefined" ? window.location.origin : "http://dis.fss.or.kr";
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || `${browserOrigin}/fss-dis-server`).replace(/\/+$/, "");
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 const api = axios.create({

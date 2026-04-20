@@ -5,6 +5,7 @@ resources:
   - namespaces.yaml
   - dis-app.yaml
   - dynamic-routing.yaml
+  - fss-dis-frontend-subpath-ingress.yaml
   - headlamp-ingress.yaml
   - mongodb-secret.yaml
   - mongodb.yaml

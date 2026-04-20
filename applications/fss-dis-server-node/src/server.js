@@ -47,6 +47,21 @@ const io = new SocketIOServer(server, {
   },
 });
 
+app.use((req, _res, next) => {
+  if (config.backendBasePath === "/") {
+    next();
+    return;
+  }
+
+  if (req.url === config.backendBasePath) {
+    req.url = "/";
+  } else if (req.url.startsWith(`${config.backendBasePath}/`)) {
+    req.url = req.url.slice(config.backendBasePath.length) || "/";
+  }
+
+  next();
+});
+
 app.use(
   cors({
     origin(origin, callback) {

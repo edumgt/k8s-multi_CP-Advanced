@@ -6,6 +6,7 @@ metadata:
 data:
   NODE_ENV: production
   APP_NAME: fss-dis-server-node
+  BACKEND_BASE_PATH: /fss-dis-server
   PORT: "3000"
   K8S_APP_NAMESPACE: app
   K8S_USER_NAMESPACE: dis
@@ -300,7 +301,7 @@ spec:
       serviceAccountName: fss-dis-server
       containers:
         - name: server
-          image: harbor.local/app/fss-adw-server-node:latest
+          image: 192.168.56.10:30092/app/fss-adw-server-node:20260420-135948
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -375,7 +376,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: harbor.local/app/fss-adw-frontend:latest
+          image: 192.168.56.10:30092/app/fss-adw-frontend:20260420-135948
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
@@ -415,6 +416,13 @@ spec:
   rules:
     - http:
         paths:
+          - path: /fss-dis-server
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
           - path: /api
             pathType: Prefix
             backend:
@@ -453,6 +461,13 @@ spec:
     - host: dis.fss.or.kr
       http:
         paths:
+          - path: /fss-dis-server
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
           - path: /api
             pathType: Prefix
             backend:
