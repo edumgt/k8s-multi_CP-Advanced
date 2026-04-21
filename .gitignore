@@ -47,3 +47,4 @@ gpu-offline-ubuntu24/debs/
 # Misc tmp
 tmp/
 .tmp/
+.codex
