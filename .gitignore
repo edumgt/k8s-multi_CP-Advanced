@@ -48,3 +48,4 @@ gpu-offline-ubuntu24/debs/
 tmp/
 .tmp/
 .codex
+.clude
