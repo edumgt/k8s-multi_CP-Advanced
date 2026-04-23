@@ -8,9 +8,9 @@ let coreApi;
 function kubeClient() {
   if (coreApi) return coreApi;
   const kc = new k8s.KubeConfig();
-  try {
+  if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) {
     kc.loadFromCluster();
-  } catch {
+  } else {
     kc.loadFromDefault();
   }
   coreApi = kc.makeApiClient(k8s.CoreV1Api);
@@ -32,6 +32,26 @@ function isNotFound(error) {
   return message.includes('"reason":"NotFound"') || / not found\b/i.test(message);
 }
 
+function isTransportError(error) {
+  const code = String(error?.code || error?.errno || "").toUpperCase();
+  if (["ECONNREFUSED", "ECONNRESET", "ENOTFOUND", "EHOSTUNREACH", "ETIMEDOUT", "EPERM"].includes(code)) {
+    return true;
+  }
+  const message = String(error?.message || "");
+  return /request to https?:\/\/.* failed/i.test(message) || /Invalid URL/i.test(message);
+}
+
+function wrapK8sError(error, action) {
+  if (!error || error?.statusCode || error?.status) return error;
+  if (!isTransportError(error)) return error;
+  const wrapped = new Error(
+    `Kubernetes API is unavailable while ${action}. Check kubeconfig and cluster network access.`,
+  );
+  wrapped.statusCode = 503;
+  wrapped.cause = error;
+  return wrapped;
+}
+
 function toLabelValue(input, fallback = "unknown") {
   const normalized = String(input || "")
     .toLowerCase()
@@ -50,7 +70,7 @@ export async function readPod(name) {
     return res?.body || res || null;
   } catch (error) {
     if (isNotFound(error)) return null;
-    throw error;
+    throw wrapK8sError(error, `reading pod ${name}`);
   }
 }
 
@@ -64,7 +84,7 @@ export async function readService(name) {
     return res?.body || res || null;
   } catch (error) {
     if (isNotFound(error)) return null;
-    throw error;
+    throw wrapK8sError(error, `reading service ${name}`);
   }
 }
 
@@ -79,7 +99,7 @@ export async function ensureUserHomePvc(identity, diskGi) {
     });
     return pvcName;
   } catch (error) {
-    if (!isNotFound(error)) throw error;
+    if (!isNotFound(error)) throw wrapK8sError(error, `reading PVC ${pvcName}`);
   }
 
   const body = {
@@ -104,10 +124,14 @@ export async function ensureUserHomePvc(identity, diskGi) {
     body.spec.storageClassName = config.jupyterUserPvcStorageClass;
   }
 
-  await api.createNamespacedPersistentVolumeClaim({
-    namespace: config.k8sUserNamespace,
-    body,
-  });
+  try {
+    await api.createNamespacedPersistentVolumeClaim({
+      namespace: config.k8sUserNamespace,
+      body,
+    });
+  } catch (error) {
+    throw wrapK8sError(error, `creating PVC ${pvcName}`);
+  }
 
   return pvcName;
 }
@@ -158,7 +182,7 @@ export function buildSessionSummary({ identity, pod, service, launchImage }) {
   } else if (ready && routed) {
     status = "ready";
     detail = isIngressPathMode()
-      ? `JupyterLab is ready on ingress path /jupyter/${identity.pod_name}.`
+      ? "JupyterLab is ready on protected ingress path /jupyter."
       : `JupyterLab is ready on dynamic route ${identity.pod_name}.${config.jupyterDynamicHostSuffix}.`;
   } else if (ready && nodePort) {
     status = "ready";
@@ -180,7 +204,6 @@ export function buildSessionSummary({ identity, pod, service, launchImage }) {
     phase,
     ready: routed ? ready : ready && Boolean(nodePort),
     detail,
-    token: buildSessionToken(config.jupyterToken, identity.session_id),
     node_port: ready && !routed ? nodePort : null,
     created_at: pod?.metadata?.creationTimestamp || null,
   };
@@ -209,7 +232,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
   const api = kubeClient();
   const routed = isDynamicRouteMode() || isIngressPathMode();
   const ingressPathMode = isIngressPathMode();
-  const jupyterBaseUrl = ingressPathMode ? `/jupyter/${identity.pod_name}` : "/";
+  const jupyterBaseUrl = ingressPathMode ? "/jupyter" : "/";
   const probePath = ingressPathMode ? `${jupyterBaseUrl}/lab` : "/lab";
   const podName = identity.pod_name;
 
@@ -217,11 +240,19 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
   const desiredImage = String(launchProfile.image || "").trim();
   const currentImage = podLaunchImage(pod);
   if (pod && desiredImage && currentImage && currentImage !== desiredImage) {
-    await api.deleteNamespacedPod({ name: podName, namespace: config.k8sUserNamespace });
+    try {
+      await api.deleteNamespacedPod({ name: podName, namespace: config.k8sUserNamespace });
+    } catch (error) {
+      throw wrapK8sError(error, `deleting pod ${podName}`);
+    }
     pod = null;
   }
   if (pod && ["Failed", "Succeeded"].includes(String(pod?.status?.phase || ""))) {
-    await api.deleteNamespacedPod({ name: podName, namespace: config.k8sUserNamespace });
+    try {
+      await api.deleteNamespacedPod({ name: podName, namespace: config.k8sUserNamespace });
+    } catch (error) {
+      throw wrapK8sError(error, `deleting pod ${podName}`);
+    }
     pod = null;
   }
 
@@ -340,34 +371,42 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
       },
     };
 
-    await api.createNamespacedPod({
-      namespace: config.k8sUserNamespace,
-      body: podBody,
-    });
+    try {
+      await api.createNamespacedPod({
+        namespace: config.k8sUserNamespace,
+        body: podBody,
+      });
+    } catch (error) {
+      throw wrapK8sError(error, `creating pod ${podName}`);
+    }
   }
 
   if (!routed) {
     const service = await readService(identity.service_name);
     if (!service) {
-      await api.createNamespacedService({
-        namespace: config.k8sUserNamespace,
-        body: {
-          metadata: {
-            name: identity.service_name,
-            labels: {
-              app: "jupyter-session",
-              "platform.dev/session-id": identity.session_id,
+      try {
+        await api.createNamespacedService({
+          namespace: config.k8sUserNamespace,
+          body: {
+            metadata: {
+              name: identity.service_name,
+              labels: {
+                app: "jupyter-session",
+                "platform.dev/session-id": identity.session_id,
+              },
+            },
+            spec: {
+              type: "NodePort",
+              selector: {
+                "platform.dev/session-id": identity.session_id,
+              },
+              ports: [{ name: "http", port: 8888, targetPort: 8888, protocol: "TCP" }],
             },
           },
-          spec: {
-            type: "NodePort",
-            selector: {
-              "platform.dev/session-id": identity.session_id,
-            },
-            ports: [{ name: "http", port: 8888, targetPort: 8888, protocol: "TCP" }],
-          },
-        },
-      });
+        });
+      } catch (error) {
+        throw wrapK8sError(error, `creating service ${identity.service_name}`);
+      }
     }
   }
 
@@ -385,7 +424,7 @@ export async function deleteSessionPod(identity) {
       namespace: config.k8sUserNamespace,
     });
   } catch (error) {
-    if (!isNotFound(error)) throw error;
+    if (!isNotFound(error)) throw wrapK8sError(error, `deleting pod ${identity.pod_name}`);
   }
 
   if (!isDynamicRouteMode() && !isIngressPathMode()) {
@@ -395,7 +434,7 @@ export async function deleteSessionPod(identity) {
         namespace: config.k8sUserNamespace,
       });
     } catch (error) {
-      if (!isNotFound(error)) throw error;
+      if (!isNotFound(error)) throw wrapK8sError(error, `deleting service ${identity.service_name}`);
     }
   }
 }
@@ -403,13 +442,24 @@ export async function deleteSessionPod(identity) {
 export async function readControlPlaneDashboard(namespace = "") {
   const api = kubeClient();
 
-  const nsRes = await api.listNamespace();
+  let nsRes;
+  let nodeRes;
+  let podsRes;
+  try {
+    nsRes = await api.listNamespace();
+    nodeRes = await api.listNode();
+    podsRes = namespace
+      ? await api.listNamespacedPod({ namespace })
+      : await api.listPodForAllNamespaces();
+  } catch (error) {
+    throw wrapK8sError(error, "reading control-plane dashboard");
+  }
+
   const namespaces = (nsRes.body.items || [])
     .map((ns) => ns.metadata?.name)
     .filter(Boolean)
     .sort();
 
-  const nodeRes = await api.listNode();
   const nodes = (nodeRes.body.items || []).map((node) => {
     const labels = node.metadata?.labels || {};
     const conditions = node.status?.conditions || [];
@@ -438,9 +488,6 @@ export async function readControlPlaneDashboard(namespace = "") {
     };
   });
 
-  const podsRes = namespace
-    ? await api.listNamespacedPod({ namespace })
-    : await api.listPodForAllNamespaces();
   const pods = (podsRes.body.items || []).map((pod) => {
     const statuses = pod.status?.containerStatuses || [];
     const readyCount = statuses.filter((s) => s.ready).length;

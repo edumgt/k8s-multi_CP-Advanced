@@ -38,21 +38,29 @@ export const config = {
     "redis://root:root-password@redis.infra.svc.cluster.local:6379/0",
   authTokenTtlSeconds: parseNumber(process.env.AUTH_TOKEN_TTL_SECONDS, 8 * 60 * 60),
   authSessionPrefix: process.env.AUTH_SESSION_PREFIX || "fss:auth:session:",
-  corsOrigins: splitCsv(process.env.CORS_ORIGINS || "https://dis.fss.or.kr,https://platform.fss.or.kr"),
+  jupyterRouteAccessTtlSeconds: parseNumber(
+    process.env.JUPYTER_ROUTE_ACCESS_TTL_SECONDS,
+    8 * 60 * 60,
+  ),
+  jupyterRouteAccessPrefix:
+    process.env.JUPYTER_ROUTE_ACCESS_PREFIX || "fss:jupyter:route:",
+  jupyterRouterSharedSecret:
+    process.env.JUPYTER_ROUTER_SHARED_SECRET || "change-this-jupyter-router-secret",
+  corsOrigins: splitCsv(process.env.CORS_ORIGINS || "http://192.168.56.240,http://platform.local"),
 
   k8sUserNamespace: process.env.K8S_USER_NAMESPACE || "dis",
   k8sAppNamespace: process.env.K8S_APP_NAMESPACE || "app",
   labGovernanceEnabled: parseBool(process.env.LAB_GOVERNANCE_ENABLED, true),
   jupyterImage:
     process.env.JUPYTER_IMAGE ||
-    `${(process.env.HARBOR_REGISTRY || "ghcr.io").replace(/\/+$/, "")}/${(
-      process.env.HARBOR_PROJECT || "dis"
-    ).replace(/^\/+|\/+$/g, "")}/jupyter-teradata-extention:latest`,
-  jupyterAccessMode: process.env.JUPYTER_ACCESS_MODE || "dynamic-route",
-  jupyterDynamicHostSuffix:
-    process.env.JUPYTER_DYNAMIC_HOST_SUFFIX || "service.jupyter.fss.or.kr",
-  jupyterDynamicScheme: process.env.JUPYTER_DYNAMIC_SCHEME || "https",
+    `${(process.env.HARBOR_REGISTRY || "harbor.local").replace(/\/+$/, "")}/${(
+      process.env.HARBOR_PROJECT || "app"
+    ).replace(/^\/+|\/+$/g, "")}/jupyter:latest`,
+  jupyterAccessMode: process.env.JUPYTER_ACCESS_MODE || "ingress-path",
+  jupyterDynamicHostSuffix: process.env.JUPYTER_DYNAMIC_HOST_SUFFIX || "platform.local",
+  jupyterDynamicScheme: process.env.JUPYTER_DYNAMIC_SCHEME || "http",
   jupyterDynamicSubdomain: process.env.JUPYTER_DYNAMIC_SUBDOMAIN || "jupyter-named-pod",
+  jupyterPublicBaseUrl: process.env.JUPYTER_PUBLIC_BASE_URL || "",
   jupyterToken: process.env.JUPYTER_TOKEN || "platform123",
   jupyterWorkspaceRoot: process.env.JUPYTER_WORKSPACE_ROOT || "/workspace/user-home",
   jupyterBootstrapDir: process.env.JUPYTER_BOOTSTRAP_DIR || "/opt/platform/bootstrap-workspace",
@@ -61,10 +69,10 @@ export const config = {
   controlPlaneUsername: process.env.CONTROL_PLANE_USERNAME || "admin@test.com",
   controlPlanePassword: process.env.CONTROL_PLANE_PASSWORD || "123456",
 
-  harborRegistry: process.env.HARBOR_REGISTRY || "ghcr.io",
-  harborProject: process.env.HARBOR_PROJECT || "dis",
+  harborRegistry: process.env.HARBOR_REGISTRY || "harbor.local",
+  harborProject: process.env.HARBOR_PROJECT || "app",
 
-  frontendUrl: process.env.FRONTEND_URL || "http://dis.fss.or.kr",
+  frontendUrl: process.env.FRONTEND_URL || "http://platform.local",
   airflowUrl: process.env.AIRFLOW_URL || "",
 };
 

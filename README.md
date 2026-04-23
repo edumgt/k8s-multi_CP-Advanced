@@ -146,9 +146,18 @@ grep server: ~/.kube/config
 | 서비스 | URL |
 |---|---|
 | Ingress VIP | `http://192.168.56.240/` |
+| Platform Portal (`hosts` 별칭 선택) | `http://192.168.56.240/` 또는 `http://platform.local/` |
 | Headlamp | `http://192.168.56.240/headlamp-dashboard/?lng=en` |
 | Kubernetes API (현재) | `https://192.168.56.31:6443` |
 | Kubernetes API (권장 최종형) | `https://<control-plane-vip>:6443` |
+
+호스트 기반 DNS ingress는 사용하지 않는다. 사용자가 `.local` 별칭으로 접속하려면 관리자 PC의 `hosts` 파일에 예시처럼 등록한다.
+
+```txt
+192.168.56.240 platform.local
+192.168.56.31 nexus.local
+192.168.56.32 harbor.local
+```
 
 ## INTERNAL-IP 정리 메모
 

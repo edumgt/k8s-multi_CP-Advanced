@@ -10,7 +10,6 @@ function safeIso(value) {
 export async function buildUserUsage(username) {
   const session = await getLabSession(username).catch(() => ({
     status: "error",
-    pod_name: "",
     node_port: null,
   }));
   const metric = await syncSessionActivity(username, session).catch(async () => getUserMetric(username));
@@ -24,7 +23,6 @@ export async function buildUserUsage(username) {
       display_name: metric?.displayName || username,
       role: metric?.role || "user",
       current_status: String(session.status || "idle"),
-      pod_name: String(session.pod_name || ""),
       node_port: session.node_port || null,
       login_count: Number(metric?.loginCount || 0),
       launch_count: Number(metric?.launchCount || 0),
@@ -51,15 +49,12 @@ export async function buildAdminOverview() {
         username: user.username,
         session_id: "",
         namespace: "",
-        pod_name: "",
-        service_name: "",
         workspace_subpath: "",
         image: "",
         status: "error",
         phase: "Error",
         ready: false,
         detail: `Unable to read session state: ${error.message}`,
-        token: "",
         node_port: null,
         created_at: null,
       };
@@ -75,8 +70,6 @@ export async function buildAdminOverview() {
       status: session.status,
       ready: Boolean(session.ready),
       detail: session.detail,
-      pod_name: session.pod_name,
-      service_name: session.service_name,
       workspace_subpath: session.workspace_subpath,
       image: session.image,
       node_port: session.node_port || null,

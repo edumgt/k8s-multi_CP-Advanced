@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.2.0",
   "engines": {
-    "node": "22.22.x"
+    "node": ">=22"
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 31320 --strictPort",

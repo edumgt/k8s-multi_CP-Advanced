@@ -43,20 +43,20 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: jupter-teradata-fss
+  name: jupyter
   namespace: default
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: jupter-teradata-fss
+      app: jupyter
   template:
     metadata:
       labels:
-        app: jupter-teradata-fss
+        app: jupyter
     spec:
       containers:
       - name: app
-        image: ghcr.io/k8s-fss/jupter-teradata-fss:0.0.1
+        image: harbor.local/app/jupyter:latest
         imagePullPolicy: Always
         command: ["/bin/sh","-c","sleep 36000"]

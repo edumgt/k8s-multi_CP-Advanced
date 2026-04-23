@@ -166,8 +166,8 @@
             <q-card-section>
               <div class="row items-center justify-between q-col-gutter-md">
                 <div>
-                  <div class="section-title">Personal JupyterLab</div>
-                  <div class="card-title">로그인한 사용자 전용 sandbox</div>
+                  <div class="section-title">Jupyter Pod Control</div>
+                  <div class="card-title">로그인한 사용자 전용 Jupyter Pod</div>
                 </div>
                 <q-badge :color="labStatusColor" rounded>
                   {{ labSession.status }}
@@ -175,9 +175,8 @@
               </div>
 
               <p class="muted">
-                현재 로그인한 계정 <strong>{{ managedUsername }}</strong> 전용 Jupyter pod를 시작합니다.
-                backend는 사용자별 PVC subPath와 snapshot 이미지를 확인하고, 준비가 끝나면 새 탭으로
-                JupyterLab을 열 수 있습니다.
+                현재 로그인한 계정 <strong>{{ managedUsername }}</strong> 전용 Jupyter Pod를 실행하고,
+                중지하고, 준비가 끝나면 Pod 웹 화면으로 바로 연결할 수 있습니다.
               </p>
 
               <div class="chip-grid">
@@ -194,27 +193,19 @@
                   color="dark"
                   unelevated
                   no-caps
-                  icon="rocket_launch"
-                  label="Start My Sandbox"
+                  icon="play_circle"
+                  label="Jupyter Pod 실행"
                   :loading="sessionLoading"
+                  :disable="!canStartLabSession"
                   @click="startLabSession"
                 />
                 <q-btn
                   outline
                   color="dark"
                   no-caps
-                  icon="sync"
-                  label="Refresh"
-                  :loading="sessionLoading"
-                  @click="refreshLabSession"
-                />
-                <q-btn
-                  outline
-                  color="dark"
-                  no-caps
                   icon="open_in_new"
-                  label="Open Lab"
-                  :disable="!labConnectReady"
+                  label="Jupyter Pod 연결"
+                  :disable="!canOpenLabSession"
                   @click="openLab"
                 />
                 <q-btn
@@ -222,8 +213,9 @@
                   color="negative"
                   no-caps
                   icon="delete"
-                  label="Stop Lab"
+                  label="Jupyter Pod 중지"
                   :loading="sessionLoading"
+                  :disable="!canStopLabSession"
                   @click="stopLabSession"
                 />
               </div>
@@ -236,16 +228,13 @@
               />
 
               <q-banner rounded class="banner-note lab-banner">
-                <div><strong>Status</strong> {{ labSession.detail }}</div>
-                <div v-if="labSession.pod_name">Pod: {{ labSession.pod_name }}</div>
-                <div v-if="labSession.service_name">Service: {{ labSession.service_name }}</div>
+                <div><strong>Pod Status</strong> {{ labSession.detail }}</div>
                 <div v-if="labSession.workspace_subpath">Workspace: {{ labSession.workspace_subpath }}</div>
                 <div v-if="labSession.node_port">NodePort: {{ labSession.node_port }}</div>
                 <div v-if="labSession.image" class="lab-url">Image: {{ labSession.image }}</div>
                 <div v-if="labSession.snapshot_status">Snapshot Publish: {{ labSession.snapshot_status }}</div>
                 <div v-if="labSession.snapshot_job_name">Snapshot Job: {{ labSession.snapshot_job_name }}</div>
                 <div v-if="labSession.snapshot_detail">Snapshot Detail: {{ labSession.snapshot_detail }}</div>
-                <div v-if="labLaunchUrl" class="lab-url">{{ labLaunchUrl }}</div>
               </q-banner>
             </q-card-section>
           </q-card>
@@ -283,7 +272,6 @@
                 <div><strong>Last Login</strong> {{ formatDateTime(usageSummary.last_login_at) }}</div>
                 <div><strong>Last Launch</strong> {{ formatDateTime(usageSummary.last_launch_at) }}</div>
                 <div><strong>Last Stop</strong> {{ formatDateTime(usageSummary.last_stop_at) }}</div>
-                <div v-if="usageSummary.pod_name"><strong>Pod</strong> {{ usageSummary.pod_name }}</div>
               </q-banner>
             </q-card-section>
           </q-card>
@@ -916,7 +904,7 @@
               </div>
 
               <p class="muted">
-                관리자는 `test1@test.com` 사용자 sandbox의 실행 여부, 현재 사용시간,
+                관리자는 `test-user` 사용자 sandbox의 실행 여부, 현재 사용시간,
                 누적 사용시간, 로그인 회수, Jupyter 실행 회수를 확인할 수 있습니다.
               </p>
 
@@ -1243,7 +1231,7 @@ import { Notify } from "quasar";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { AgGridVue } from "ag-grid-vue3";
 
-const browserOrigin = typeof window !== "undefined" ? window.location.origin : "http://dis.fss.or.kr";
+const browserOrigin = typeof window !== "undefined" ? window.location.origin : "http://platform.local";
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || `${browserOrigin}/fss-dis-server`).replace(/\/+$/, "");
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
@@ -1270,13 +1258,13 @@ const leftDrawerOpen = ref(typeof window !== "undefined" ? window.innerWidth >= 
 const authResolved = ref(false);
 
 const demoAccounts = ref([
-  { username: "test1@test.com", role: "user", display_name: "Test User 1" },
+  { username: "test-user", role: "user", display_name: "ADW Test User" },
   { username: "admin@test.com", role: "admin", display_name: "Platform Admin" },
 ]);
 
 const loginForm = ref({
-  username: savedAuthUser?.username || "test1@test.com",
-  password: "123456",
+  username: savedAuthUser?.username || "test-user",
+  password: "test-password",
 });
 
 const appSession = ref(emptyAppSession(savedAuthToken, savedAuthUser));
@@ -1317,8 +1305,8 @@ const adminUserForm = ref({
 });
 
 const analysisEnvForm = ref({
-  env_id: "jupter-teradata-fss",
-  name: "Jupyter Teradata Extension",
+  env_id: "jupyter",
+  name: "Jupyter",
   image: "",
   description: "",
   gpu_enabled: false,
@@ -1403,6 +1391,24 @@ const userPolicyBadgeColor = computed(() => {
     return "grey-7";
   }
   return userLabPolicy.value.ready ? "positive" : "warning";
+});
+const canStartLabSession = computed(() => {
+  if (!isUser.value || !managedUsername.value || sessionLoading.value) {
+    return false;
+  }
+  return !["ready", "provisioning"].includes(String(labSession.value.status || ""));
+});
+const canStopLabSession = computed(() => {
+  if (!isUser.value || !managedUsername.value || sessionLoading.value) {
+    return false;
+  }
+  return !["idle", "missing"].includes(String(labSession.value.status || ""));
+});
+const canOpenLabSession = computed(() => {
+  if (!isUser.value || !managedUsername.value || sessionLoading.value) {
+    return false;
+  }
+  return labConnectReady.value;
 });
 
 const menuNavLinks = computed(() => {
@@ -1497,9 +1503,9 @@ const featureNavLinks = computed(() => {
       },
       {
         id: "user-lab-panel",
-        label: "개인 JupyterLab",
+        label: "Jupyter Pod 제어",
         icon: "rocket_launch",
-        description: "샌드박스 실행/중지",
+        description: "Pod 실행/중지/연결",
       },
     );
   }
@@ -1518,16 +1524,6 @@ const labStatusColor = computed(() => {
     return "negative";
   }
   return "grey-7";
-});
-
-const labLaunchUrl = computed(() => {
-  if (!labSession.value.ready || !labSession.value.node_port || !labSession.value.token) {
-    return "";
-  }
-  return (
-    `${browserProtocol}//${browserHost}:${labSession.value.node_port}/lab` +
-    `?token=${encodeURIComponent(labSession.value.token)}`
-  );
 });
 
 const snapshotStatusColor = computed(() => {
@@ -1723,7 +1719,6 @@ const adminUserGridColumns = [
     valueFormatter: durationValueFormatter,
     minWidth: 130,
   },
-  { headerName: "Pod", field: "pod_name", minWidth: 180 },
   { headerName: "NodePort", field: "node_port", type: "numericColumn", minWidth: 120 },
   {
     headerName: "Last Login",
@@ -1752,15 +1747,12 @@ function emptyLabSession() {
     session_id: "",
     username: "",
     namespace: "",
-    pod_name: "",
-    service_name: "",
     workspace_subpath: "",
     image: "",
     status: "idle",
     phase: "Idle",
     ready: false,
-    detail: "Log in as a sandbox user to start JupyterLab.",
-    token: "",
+    detail: "Log in as a user to run your Jupyter Pod.",
     node_port: null,
     created_at: null,
     snapshot_status: "",
@@ -1779,7 +1771,7 @@ function emptySnapshotState() {
     job_name: "",
     published_at: "",
     restorable: false,
-    detail: "Publish a workspace snapshot after your Jupyter sandbox is running.",
+    detail: "Publish a workspace snapshot after your Jupyter Pod is running.",
   };
 }
 
@@ -1790,7 +1782,6 @@ function emptyUserUsage() {
       display_name: "",
       role: "user",
       current_status: "idle",
-      pod_name: "",
       node_port: null,
       login_count: 0,
       launch_count: 0,
@@ -2733,7 +2724,7 @@ async function waitForSnapshotCompletion(options = {}) {
         if (notifyWaiting && !announcedWaiting) {
           Notify.create({
             type: "info",
-            message: "Waiting for your latest Harbor snapshot publish before starting Jupyter.",
+            message: "Waiting for your latest Harbor snapshot publish before running the Jupyter Pod.",
           });
           announcedWaiting = true;
         }
@@ -2762,7 +2753,7 @@ async function waitForSnapshotCompletion(options = {}) {
   if (notifyTimeout) {
     Notify.create({
       type: "warning",
-      message: "Snapshot publish is still running. Starting your sandbox now.",
+      message: "Snapshot publish is still running. Running your Jupyter Pod now.",
     });
   }
 }
@@ -2798,8 +2789,8 @@ async function startLabSession() {
       type: payload.status === "ready" ? "positive" : "info",
       message:
         payload.status === "ready"
-          ? "Your Jupyter sandbox is ready."
-          : "Creating your Jupyter sandbox pod.",
+          ? "Your Jupyter Pod is ready."
+          : "Creating your Jupyter Pod.",
     });
   } catch (error) {
     stopLabPolling();
@@ -2842,7 +2833,7 @@ async function stopLabSession() {
       });
     }
     void loadUserUsage({ silent: true });
-    let stopMessage = "Your Jupyter sandbox resources were deleted.";
+    let stopMessage = "Your Jupyter Pod was stopped and related resources were deleted.";
     if (payload.snapshot_status === "building" || payload.snapshot_status === "pending") {
       stopMessage += " Harbor snapshot publish started.";
     } else if (payload.snapshot_status === "ready") {
@@ -3008,7 +2999,7 @@ async function openLab() {
   if (!labConnectReady.value) {
     Notify.create({
       type: "warning",
-      message: "JupyterLab is not ready yet.",
+      message: "Jupyter Pod is not ready yet.",
     });
     return;
   }
@@ -3018,8 +3009,8 @@ async function openLab() {
   try {
     pendingWindow = window.open("about:blank", pendingWindowName);
     if (pendingWindow && pendingWindow.document) {
-      pendingWindow.document.title = "Opening JupyterLab";
-      pendingWindow.document.body.innerHTML = "<p>Opening JupyterLab...</p>";
+      pendingWindow.document.title = "Connecting to Jupyter Pod";
+      pendingWindow.document.body.innerHTML = "<p>Connecting to Jupyter Pod...</p>";
     }
   } catch {
     pendingWindow = null;
@@ -3033,9 +3024,9 @@ async function openLab() {
       },
     );
     const payload = await parseJson(response);
-    const redirectUrl = payload.redirect_url || labLaunchUrl.value;
+    const redirectUrl = payload.redirect_url || "";
     if (!redirectUrl) {
-      throw new Error("JupyterLab redirect URL is unavailable.");
+      throw new Error("Jupyter Pod web URL is unavailable.");
     }
 
     if (pendingWindow && !pendingWindow.closed) {
@@ -3052,14 +3043,6 @@ async function openLab() {
   } catch (error) {
     if (pendingWindow && !pendingWindow.closed) {
       pendingWindow.close();
-    }
-    if (labLaunchUrl.value) {
-      window.open(labLaunchUrl.value, pendingWindowName, "noopener");
-      Notify.create({
-        type: "warning",
-        message: `Connect API fallback used: ${error.message}`,
-      });
-      return;
     }
     Notify.create({
       type: "negative",

@@ -60,7 +60,7 @@ spec:
               const http = require("http");
 
               const PORT = Number(process.env.PORT || "8080");
-              const HOST_SUFFIX = String(process.env.ROUTER_HOST_SUFFIX || "service.jupyter.fss.or.kr").toLowerCase();
+              const HOST_SUFFIX = String(process.env.ROUTER_HOST_SUFFIX || "platform.local").toLowerCase();
               const HEADLESS = String(process.env.ROUTER_HEADLESS_SERVICE || "jupyter-named-pod").toLowerCase();
               const NAMESPACE = String(process.env.ROUTER_TARGET_NAMESPACE || "dis").toLowerCase();
               const TARGET_PORT = Number(process.env.ROUTER_TARGET_PORT || "8888");

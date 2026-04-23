@@ -13,7 +13,7 @@ import { canonicalUsername, buildLabIdentity } from "../utils/labIdentity.js";
 import { findUser } from "./authService.js";
 import { ensureUserHomePvc } from "./k8sService.js";
 
-const DEFAULT_ENV_ID = "jupyter-teradata-extention";
+const DEFAULT_ENV_ID = "jupyter";
 
 function now() {
   return new Date();
@@ -48,9 +48,9 @@ export async function ensureDefaultEnvironment() {
   if (count > 0) return;
   await AnalysisEnvironment.create({
     envId: DEFAULT_ENV_ID,
-    name: "Jupyter Teradata Extension",
+    name: "Jupyter",
     image: config.jupyterImage,
-    description: "Default per-user JupyterLab image with Teradata extension.",
+    description: "Default per-user Jupyter image built from applications/jupyter.",
     gpuEnabled: false,
     isActive: true,
     updatedBy: "system",

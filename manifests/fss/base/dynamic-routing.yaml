@@ -41,8 +41,16 @@ spec:
           env:
             - name: PORT
               value: "8080"
+            - name: ROUTER_PATH_PREFIX
+              value: "/jupyter"
             - name: ROUTER_HOST_SUFFIX
-              value: "service.jupyter.fss.or.kr"
+              value: ""
+            - name: ROUTER_BACKEND_URL
+              value: "http://fss-dis-server.app.svc.cluster.local:3000"
+            - name: ROUTER_SHARED_SECRET
+              value: "change-this-jupyter-router-secret"
+            - name: ROUTER_ACCESS_COOKIE_NAME
+              value: "jupyter_route_access"
             - name: ROUTER_HEADLESS_SERVICE
               value: "jupyter-named-pod"
             - name: ROUTER_TARGET_NAMESPACE
@@ -85,7 +93,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: jupyter-user-wildcard
+  name: jupyter-user-routing
   namespace: dis
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
@@ -94,10 +102,9 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: "*.service.jupyter.fss.or.kr"
-      http:
+    - http:
         paths:
-          - path: /
+          - path: /jupyter
             pathType: Prefix
             backend:
               service:

@@ -11,20 +11,23 @@ data:
   K8S_APP_NAMESPACE: app
   K8S_USER_NAMESPACE: dis
   LAB_GOVERNANCE_ENABLED: "true"
-  JUPYTER_IMAGE: ghcr.io/k8s-fss/jupter-teradata-fss:0.0.1
-  JUPYTER_ACCESS_MODE: dynamic-route
-  JUPYTER_DYNAMIC_HOST_SUFFIX: service.jupyter.fss.or.kr
-  JUPYTER_DYNAMIC_SCHEME: https
+  JUPYTER_IMAGE: harbor.local/app/jupyter:latest
+  JUPYTER_ACCESS_MODE: ingress-path
+  JUPYTER_DYNAMIC_HOST_SUFFIX: platform.local
+  JUPYTER_DYNAMIC_SCHEME: http
   JUPYTER_DYNAMIC_SUBDOMAIN: jupyter-named-pod
   JUPYTER_WORKSPACE_ROOT: /workspace/user-home
   JUPYTER_BOOTSTRAP_DIR: /opt/platform/bootstrap-workspace
   AUTH_TOKEN_TTL_SECONDS: "28800"
   AUTH_SESSION_PREFIX: "fss:auth:session:"
+  JUPYTER_ROUTE_ACCESS_TTL_SECONDS: "28800"
+  JUPYTER_ROUTE_ACCESS_PREFIX: "fss:jupyter:route:"
+  JUPYTER_ROUTER_SHARED_SECRET: "change-this-jupyter-router-secret"
   METRICS_COLLECT_INTERVAL_SECONDS: "60"
   METRICS_RETENTION_DAYS: "14"
   METRICS_COLLECTION_NAME: k8s_metrics_samples
-  CORS_ORIGINS: ""
-  FRONTEND_URL: "https://dis.fss.or.kr"
+  CORS_ORIGINS: "http://192.168.56.240,http://platform.local"
+  FRONTEND_URL: "http://platform.local"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -301,7 +304,7 @@ spec:
       serviceAccountName: fss-dis-server
       containers:
         - name: server
-          image: 192.168.56.10:30092/app/fss-adw-server-node:20260420-135948
+          image: harbor.local/app/fss-adw-server-node:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -376,7 +379,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 192.168.56.10:30092/app/fss-adw-frontend:20260420-135948
+          image: harbor.local/app/fss-adw-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
@@ -415,51 +418,6 @@ spec:
   ingressClassName: nginx
   rules:
     - http:
-        paths:
-          - path: /fss-dis-server
-            pathType: Prefix
-            backend:
-              service:
-                name: fss-dis-server
-                port:
-                  number: 3000
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: fss-dis-server
-                port:
-                  number: 3000
-          - path: /healthz
-            pathType: Prefix
-            backend:
-              service:
-                name: fss-dis-server
-                port:
-                  number: 3000
-          - path: /livez
-            pathType: Prefix
-            backend:
-              service:
-                name: fss-dis-server
-                port:
-                  number: 3000
-          - path: /socket.io
-            pathType: Prefix
-            backend:
-              service:
-                name: fss-dis-server
-                port:
-                  number: 3000
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: fss-dis-frontend
-                port:
-                  number: 80
-    - host: dis.fss.or.kr
-      http:
         paths:
           - path: /fss-dis-server
             pathType: Prefix

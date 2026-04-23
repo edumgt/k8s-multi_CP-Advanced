@@ -4,7 +4,7 @@
 |---|---|---|
 | 하이퍼바이저 | VMware Workstation/ESXi | 본 저장소 문서는 VMware 기반 리눅스 VM을 기준으로 작성 |
 | VM OS | Ubuntu 24.04 LTS | 문서 내 명령은 Ubuntu 쉘 환경 기준 |
-| Kubernetes 접근 | `kubectl` + `~/.kube/config` | VM 또는 관리자 PC에서 API Server(예: `192.168.56.10:6443`) 접속 |
+| Kubernetes 접근 | `kubectl` + `~/.kube/config` | VM 또는 관리자 PC에서 API LB(예: `192.168.56.31:6443`) 접속 |
 | 기본 작업 경로 | `/home/ubuntu/k8s-fss` | 문서 명령 실행 기준 프로젝트 루트 |
 
 # fss-dis-server-node
@@ -15,7 +15,7 @@ Node 22 + Express 5 기반의 Jupyter 거버넌스 API 서버입니다.
 - Python 기반 Jupyter 관리 API를 Node.js 기반으로 전환
 - 사용자별 리소스 신청/승인 워크플로우 제공
 - 승인된 사용자에 대해 PVC 생성 + named Pod 생성
-- wildcard URL(`*.service.jupyter.fss.or.kr`)로 개인 JupyterLab 연결
+- ingress path(`http://192.168.56.240/jupyter/lab`) 또는 `hosts` 기반 `platform.local`로 개인 JupyterLab 연결
 
 ## 기술 스택
 - Backend: Node 22, Express 5, Socket.io, Mongoose, Redis session
@@ -24,13 +24,20 @@ Node 22 + Express 5 기반의 Jupyter 거버넌스 API 서버입니다.
 ## 환경 변수
 기본 샘플은 `.env.example` 참고.
 
+WSL에서 백엔드를 직접 띄울 때는 `wsl.env.example` 값을 기준으로 `MONGO_URI=localhost`, `REDIS_URL=localhost`, `FRONTEND_URL=http://localhost:31320`로 맞추고, Jupyter 공개 경로는 `JUPYTER_PUBLIC_BASE_URL`로 별도 지정한다.
+
+기본 로그인 계정:
+- 사용자: `test-user / test-password`
+- 관리자: `admin@test.com / 123456`
+
 핵심 변수:
 - `MONGO_URI`, `REDIS_URL`
 - `K8S_USER_NAMESPACE` (사용자 Pod/PVC namespace, 기본 `dis`)
 - `LAB_GOVERNANCE_ENABLED`
 - `JUPYTER_IMAGE`
-- `JUPYTER_ACCESS_MODE` (`dynamic-route` 권장)
+- `JUPYTER_ACCESS_MODE` (`ingress-path` 권장)
 - `JUPYTER_DYNAMIC_HOST_SUFFIX`, `JUPYTER_DYNAMIC_SCHEME`, `JUPYTER_DYNAMIC_SUBDOMAIN`
+- `JUPYTER_PUBLIC_BASE_URL` (WSL 개발 시 Jupyter를 열 공개 ingress 주소)
 
 ## 주요 API
 - 인증

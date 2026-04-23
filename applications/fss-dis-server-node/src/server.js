@@ -32,7 +32,15 @@ import {
   submitResourceRequest,
   upsertAnalysisEnvironment,
 } from "./services/governanceService.js";
-import { buildConnectResponse, deleteLabSession, ensureLabSession, getLabSession, getSnapshotStatus, publishSnapshot } from "./services/sessionService.js";
+import {
+  buildConnectResponse,
+  deleteLabSession,
+  ensureLabSession,
+  getLabSession,
+  getSnapshotStatus,
+  publishSnapshot,
+  resolveJupyterRouteSession,
+} from "./services/sessionService.js";
 import { buildAdminOverview, buildUserUsage } from "./services/usageService.js";
 import { readControlPlaneDashboard } from "./services/k8sService.js";
 import { canonicalUsername } from "./utils/labIdentity.js";
@@ -40,6 +48,7 @@ import { toDemoUserInfo } from "./utils/formatters.js";
 
 const app = express();
 const server = http.createServer(app);
+app.set("trust proxy", true);
 const io = new SocketIOServer(server, {
   cors: {
     origin: config.corsOrigins.length ? config.corsOrigins : true,
@@ -91,12 +100,30 @@ function emitGovernanceEvent(event, payload) {
 
 const controlPlaneTokens = new Map();
 
+function requireJupyterRouter(req, res, next) {
+  if (!config.jupyterRouterSharedSecret) {
+    return res.status(503).json({ detail: "Jupyter router shared secret is not configured." });
+  }
+  if (req.headers["x-router-secret"] !== config.jupyterRouterSharedSecret) {
+    return res.status(403).json({ detail: "Jupyter router access denied." });
+  }
+  return next();
+}
+
 function buildDashboardPayload() {
+  const frontendBaseUrl = String(config.frontendUrl || "http://platform.local").replace(/\/+$/, "");
+  const jupyterEndpoint = config.jupyterAccessMode === "ingress-path"
+    ? `${frontendBaseUrl}/jupyter/lab`
+    : `${config.jupyterDynamicScheme}://*.${config.jupyterDynamicHostSuffix}`;
+  const jupyterDetail = config.jupyterAccessMode === "ingress-path"
+    ? "Per-user protected routing through ingress path /jupyter/lab."
+    : "Per-user named pod routing through wildcard host.";
+
   return {
     runtime: {
       backend: "Node 22 + Express 5 + Socket.io + Mongoose + Redis session",
       frontend: "Node 22 + Vue3 + Quasar SPA + Axios + Chartjs",
-      orchestration: "Kubernetes dynamic route + named pod + headless service",
+      orchestration: "Kubernetes ingress path + named pod + headless service",
       storage: "Per-user PVC with requested quota",
     },
     services: [
@@ -124,9 +151,9 @@ function buildDashboardPayload() {
       {
         name: "jupyter",
         kind: "workbench",
-        endpoint: `${config.jupyterDynamicScheme}://*.${config.jupyterDynamicHostSuffix}`,
+        endpoint: jupyterEndpoint,
         ok: true,
-        detail: "Per-user named pod routing through wildcard ingress",
+        detail: jupyterDetail,
       },
     ],
     quick_links: [
@@ -454,8 +481,21 @@ app.get(
   authorizeUsernameAccess,
   asyncHandler(async (req, res) => {
     const summary = await getLabSession(req.targetUsername);
-    const payload = buildConnectResponse(summary);
+    const payload = await buildConnectResponse(summary, req.targetUsername, req);
     res.json(payload);
+  }),
+);
+
+app.get(
+  "/internal/jupyter/route-session",
+  requireJupyterRouter,
+  asyncHandler(async (req, res) => {
+    const accessToken = String(req.query.access || "").trim();
+    if (!accessToken) {
+      return res.status(400).json({ detail: "Jupyter route access token is required." });
+    }
+    const payload = await resolveJupyterRouteSession(accessToken);
+    return res.json(payload);
   }),
 );
 

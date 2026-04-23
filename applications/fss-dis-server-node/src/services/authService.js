@@ -7,9 +7,14 @@ import { User, UserMetric } from "../models/index.js";
 import { getRedis } from "./db.js";
 
 const memorySessions = new Map();
+const memoryJupyterRouteAccess = new Map();
 
 function sessionKey(token) {
   return `${config.authSessionPrefix}${token}`;
+}
+
+function jupyterRouteAccessKey(token) {
+  return `${config.jupyterRouteAccessPrefix}${token}`;
 }
 
 export async function hashPassword(password) {
@@ -23,21 +28,24 @@ export async function verifyPassword(password, passwordHash) {
 export async function ensureDefaultUsers() {
   const defaults = [
     { username: "admin@test.com", password: "123456", role: "admin", displayName: "Platform Admin" },
-    { username: "test1@test.com", password: "123456", role: "user", displayName: "Test User 1" },
+    { username: "test-user", password: "test-password", role: "user", displayName: "ADW Test User" },
   ];
 
   for (const item of defaults) {
-    const existing = await User.findOne({ username: item.username }).lean();
-    if (!existing) {
-      const passwordHash = await hashPassword(item.password);
-      await User.create({
-        username: item.username,
-        passwordHash,
-        role: item.role,
-        displayName: item.displayName,
-        builtIn: true,
-      });
-    }
+    const passwordHash = await hashPassword(item.password);
+    await User.updateOne(
+      { username: item.username },
+      {
+        $set: {
+          username: item.username,
+          passwordHash,
+          role: item.role,
+          displayName: item.displayName,
+          builtIn: true,
+        },
+      },
+      { upsert: true },
+    );
   }
 }
 
@@ -143,6 +151,58 @@ export async function deleteAuthSession(token) {
   } catch {
     memorySessions.delete(token);
   }
+}
+
+export async function storeJupyterRouteAccess(username) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + config.jupyterRouteAccessTtlSeconds * 1000);
+  const payload = {
+    token,
+    username: String(username || "").trim().toLowerCase(),
+    created_at: now.toISOString(),
+    expires_at: expiresAt.toISOString(),
+    expires_in: config.jupyterRouteAccessTtlSeconds,
+  };
+
+  const redis = getRedis();
+  try {
+    if (redis.status !== "ready") {
+      await redis.connect();
+    }
+    await redis.setex(
+      jupyterRouteAccessKey(token),
+      config.jupyterRouteAccessTtlSeconds,
+      JSON.stringify(payload),
+    );
+  } catch {
+    memoryJupyterRouteAccess.set(token, payload);
+  }
+  return payload;
+}
+
+export async function getJupyterRouteAccess(token) {
+  if (!token) return null;
+  const redis = getRedis();
+  try {
+    if (redis.status !== "ready") {
+      await redis.connect();
+    }
+    const raw = await redis.get(jupyterRouteAccessKey(token));
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // fall through
+  }
+
+  const row = memoryJupyterRouteAccess.get(token);
+  if (!row) return null;
+
+  const expiresAt = new Date(row.expires_at);
+  if (expiresAt.valueOf() <= Date.now()) {
+    memoryJupyterRouteAccess.delete(token);
+    return null;
+  }
+  return row;
 }
 
 function secondsBetween(a, b = new Date()) {
