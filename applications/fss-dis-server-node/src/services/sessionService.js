@@ -1,10 +1,8 @@
 import { config, isDynamicRouteMode, isIngressPathMode } from "../config.js";
 import { buildLabIdentity, buildSessionToken } from "../utils/labIdentity.js";
 import {
-  getJupyterRouteAccess,
   recordLabLaunch,
   recordLabStop,
-  storeJupyterRouteAccess,
   syncSessionActivity,
 } from "./authService.js";
 import { getUserLabLaunchProfile } from "./governanceService.js";
@@ -158,10 +156,9 @@ export async function buildConnectResponse(summary, username, req = null) {
   const publicBase = String(config.jupyterPublicBaseUrl || "").trim();
   const jupyterBase = publicBase ? new URL(publicBase) : frontend;
   if (isIngressPathMode()) {
-    const access = await storeJupyterRouteAccess(username);
     return {
-      redirect_url: `${jupyterBase.origin}/jupyter/lab?access=${encodeURIComponent(access.token)}`,
-      detail: "Connected through protected ingress path /jupyter.",
+      redirect_url: `${jupyterBase.origin}/jupyter/lab?userid=${encodeURIComponent(username)}`,
+      detail: "Connected through protected ingress path /jupyter with pod-router user mapping.",
     };
   }
   if (isDynamicRouteMode()) {
@@ -188,23 +185,23 @@ export async function buildConnectResponse(summary, username, req = null) {
   };
 }
 
-export async function resolveJupyterRouteSession(accessToken) {
-  const routeAccess = await getJupyterRouteAccess(accessToken);
-  if (!routeAccess?.username) {
-    throw new Error("Jupyter route access is invalid or expired.");
+export async function resolveJupyterRouteSession(username) {
+  const requestedUsername = String(username || "").trim();
+  if (!requestedUsername) {
+    throw new Error("Jupyter route userid is required.");
   }
 
-  const identity = buildLabIdentity(routeAccess.username);
-  const summary = await readLabSessionSummary(routeAccess.username);
+  const identity = buildLabIdentity(requestedUsername);
+  const summary = await readLabSessionSummary(identity.username);
   if (!summary?.ready) {
     throw new Error("JupyterLab is not ready yet.");
   }
 
   return {
-    username: routeAccess.username,
+    username: identity.username,
     pod_name: identity.pod_name,
+    upstream_host: `${identity.pod_name}.${config.jupyterDynamicSubdomain}.${config.k8sUserNamespace}.svc.cluster.local`,
     token: buildSessionToken(config.jupyterToken, identity.session_id),
-    expires_at: routeAccess.expires_at,
   };
 }
 

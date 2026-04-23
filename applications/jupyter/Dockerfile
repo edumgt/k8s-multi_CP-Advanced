@@ -7,14 +7,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /workspace
 
-ARG PIP_INDEX_URL=http://192.168.56.31:8081/repository/pypi-proxy/simple
-ARG PIP_TRUSTED_HOST=192.168.56.31
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG PIP_TRUSTED_HOST=
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir \
-    --index-url "${PIP_INDEX_URL}" \
-    --trusted-host "${PIP_TRUSTED_HOST}" \
-    -r requirements.txt
+RUN if [ -n "${PIP_TRUSTED_HOST}" ]; then \
+      pip install --no-cache-dir \
+        --index-url "${PIP_INDEX_URL}" \
+        --trusted-host "${PIP_TRUSTED_HOST}" \
+        -r requirements.txt ; \
+    else \
+      pip install --no-cache-dir \
+        --index-url "${PIP_INDEX_URL}" \
+        -r requirements.txt ; \
+    fi
 
 COPY bootstrap/start-notebook.sh /usr/local/bin/start-notebook.sh
 COPY work ${JUPYTER_BOOTSTRAP_DIR}

@@ -490,11 +490,26 @@ app.get(
   "/internal/jupyter/route-session",
   requireJupyterRouter,
   asyncHandler(async (req, res) => {
-    const accessToken = String(req.query.access || "").trim();
-    if (!accessToken) {
-      return res.status(400).json({ detail: "Jupyter route access token is required." });
+    const username = String(req.query.userid || req.query.username || "").trim();
+    if (!username) {
+      return res.status(400).json({ detail: "Jupyter route userid is required." });
     }
-    const payload = await resolveJupyterRouteSession(accessToken);
+    const requesterToken = String(req.headers["x-user-session"] || "").trim();
+    if (!requesterToken) {
+      return res.status(401).json({ detail: "Application login session is required." });
+    }
+    const requesterSession = await getAuthSession(requesterToken);
+    if (!requesterSession) {
+      return res.status(401).json({ detail: "Application login session is invalid or expired." });
+    }
+    const normalizedUsername = canonicalUsername(username);
+    if (
+      requesterSession.role !== "admin" &&
+      canonicalUsername(requesterSession.username) !== normalizedUsername
+    ) {
+      return res.status(403).json({ detail: "You can only access your own Jupyter sandbox." });
+    }
+    const payload = await resolveJupyterRouteSession(normalizedUsername);
     return res.json(payload);
   }),
 );

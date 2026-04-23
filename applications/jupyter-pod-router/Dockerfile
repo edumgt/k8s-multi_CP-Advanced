@@ -1,10 +1,11 @@
-FROM node:22-alpine
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 WORKDIR /app
+COPY server.js /app/server.js
 
-COPY package.json ./
-COPY src ./src
+ENV NODE_ENV=production
+ENV PORT=8080
 
 EXPOSE 8080
-
-CMD ["npm", "start"]
+CMD ["node", "/app/server.js"]

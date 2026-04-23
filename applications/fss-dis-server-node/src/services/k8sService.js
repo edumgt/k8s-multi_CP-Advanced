@@ -88,6 +88,52 @@ export async function readService(name) {
   }
 }
 
+async function ensureRoutedHeadlessService() {
+  const api = kubeClient();
+  const name = config.jupyterDynamicSubdomain;
+  if (!name) return;
+
+  try {
+    await api.readNamespacedService({
+      name,
+      namespace: config.k8sUserNamespace,
+    });
+    return;
+  } catch (error) {
+    if (!isNotFound(error)) throw wrapK8sError(error, `reading service ${name}`);
+  }
+
+  try {
+    await api.createNamespacedService({
+      namespace: config.k8sUserNamespace,
+      body: {
+        metadata: {
+          name,
+          labels: {
+            "app.kubernetes.io/component": "user-jupyter-routing",
+          },
+        },
+        spec: {
+          clusterIP: "None",
+          publishNotReadyAddresses: true,
+          selector: {
+            "app.kubernetes.io/component": "user-jupyter",
+          },
+          ports: [
+            {
+              name: "http",
+              port: 8888,
+              targetPort: 8888,
+            },
+          ],
+        },
+      },
+    });
+  } catch (error) {
+    throw wrapK8sError(error, `creating service ${name}`);
+  }
+}
+
 export async function ensureUserHomePvc(identity, diskGi) {
   const api = kubeClient();
   const pvcName = `lab-home-${identity.session_id}`.slice(0, 63);
@@ -228,6 +274,30 @@ function podLaunchImage(pod) {
   return String(pod?.spec?.containers?.[0]?.image || "").trim();
 }
 
+function personalVolumeMounts() {
+  const claimName = String(config.jupyterPersonalPvcName || "").trim();
+  const mountPath = String(config.jupyterPersonalMountPath || "/personal").trim();
+  if (!claimName || !mountPath) {
+    return { mounts: [], volumes: [] };
+  }
+  return {
+    mounts: [
+      {
+        name: "jupyter-personal",
+        mountPath,
+      },
+    ],
+    volumes: [
+      {
+        name: "jupyter-personal",
+        persistentVolumeClaim: {
+          claimName,
+        },
+      },
+    ],
+  };
+}
+
 export async function createOrEnsureSessionPod({ identity, launchProfile }) {
   const api = kubeClient();
   const routed = isDynamicRouteMode() || isIngressPathMode();
@@ -235,6 +305,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
   const jupyterBaseUrl = ingressPathMode ? "/jupyter" : "/";
   const probePath = ingressPathMode ? `${jupyterBaseUrl}/lab` : "/lab";
   const podName = identity.pod_name;
+  const personalStorage = personalVolumeMounts();
 
   let pod = await readPod(podName);
   const desiredImage = String(launchProfile.image || "").trim();
@@ -343,6 +414,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
                   ? identity.workspace_subpath
                   : undefined,
               },
+              ...personalStorage.mounts,
             ],
             readinessProbe: {
               httpGet: { path: probePath, port: 8888 },
@@ -367,6 +439,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
               claimName: launchProfile.pvc_name,
             },
           },
+          ...personalStorage.volumes,
         ],
       },
     };
@@ -379,6 +452,10 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
     } catch (error) {
       throw wrapK8sError(error, `creating pod ${podName}`);
     }
+  }
+
+  if (routed) {
+    await ensureRoutedHeadlessService();
   }
 
   if (!routed) {

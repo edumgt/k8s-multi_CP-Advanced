@@ -1233,6 +1233,9 @@ import { AgGridVue } from "ag-grid-vue3";
 
 const browserOrigin = typeof window !== "undefined" ? window.location.origin : "http://platform.local";
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || `${browserOrigin}/fss-dis-server`).replace(/\/+$/, "");
+const APP_AUTH_TOKEN_STORAGE_KEY = "appAuthToken";
+const APP_AUTH_USER_STORAGE_KEY = "appAuthUser";
+const APP_SESSION_COOKIE_NAME = "fss_app_session";
 
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 const api = axios.create({
@@ -1241,10 +1244,10 @@ const api = axios.create({
 });
 
 const savedAuthToken =
-  typeof window !== "undefined" ? window.localStorage.getItem("appAuthToken") || "" : "";
+  typeof window !== "undefined" ? window.localStorage.getItem(APP_AUTH_TOKEN_STORAGE_KEY) || "" : "";
 const savedAuthUser =
-  typeof window !== "undefined" && window.localStorage.getItem("appAuthUser")
-    ? JSON.parse(window.localStorage.getItem("appAuthUser"))
+  typeof window !== "undefined" && window.localStorage.getItem(APP_AUTH_USER_STORAGE_KEY)
+    ? JSON.parse(window.localStorage.getItem(APP_AUTH_USER_STORAGE_KEY))
     : null;
 
 const loading = ref(true);
@@ -2038,16 +2041,20 @@ function persistAppSession(token, user) {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem("appAuthToken", token);
-  window.localStorage.setItem("appAuthUser", JSON.stringify(user));
+  window.localStorage.setItem(APP_AUTH_TOKEN_STORAGE_KEY, token);
+  window.localStorage.setItem(APP_AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+  const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${APP_SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/jupyter; SameSite=Lax${secureFlag}`;
 }
 
 function clearAppSessionStorage() {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.removeItem("appAuthToken");
-  window.localStorage.removeItem("appAuthUser");
+  window.localStorage.removeItem(APP_AUTH_TOKEN_STORAGE_KEY);
+  window.localStorage.removeItem(APP_AUTH_USER_STORAGE_KEY);
+  const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${APP_SESSION_COOKIE_NAME}=; Path=/jupyter; SameSite=Lax; Max-Age=0${secureFlag}`;
 }
 
 function startLabPolling() {

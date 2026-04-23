@@ -53,7 +53,7 @@ export const config = {
   labGovernanceEnabled: parseBool(process.env.LAB_GOVERNANCE_ENABLED, true),
   jupyterImage:
     process.env.JUPYTER_IMAGE ||
-    `${(process.env.HARBOR_REGISTRY || "harbor.local").replace(/\/+$/, "")}/${(
+    `${(process.env.HARBOR_REGISTRY || "192.168.56.32").replace(/\/+$/, "")}/${(
       process.env.HARBOR_PROJECT || "app"
     ).replace(/^\/+|\/+$/g, "")}/jupyter:latest`,
   jupyterAccessMode: process.env.JUPYTER_ACCESS_MODE || "ingress-path",
@@ -65,11 +65,13 @@ export const config = {
   jupyterWorkspaceRoot: process.env.JUPYTER_WORKSPACE_ROOT || "/workspace/user-home",
   jupyterBootstrapDir: process.env.JUPYTER_BOOTSTRAP_DIR || "/opt/platform/bootstrap-workspace",
   jupyterUserPvcStorageClass: process.env.JUPYTER_USER_PVC_STORAGE_CLASS || "",
+  jupyterPersonalPvcName: process.env.JUPYTER_PERSONAL_PVC_NAME || "",
+  jupyterPersonalMountPath: process.env.JUPYTER_PERSONAL_MOUNT_PATH || "/personal",
 
   controlPlaneUsername: process.env.CONTROL_PLANE_USERNAME || "admin@test.com",
   controlPlanePassword: process.env.CONTROL_PLANE_PASSWORD || "123456",
 
-  harborRegistry: process.env.HARBOR_REGISTRY || "harbor.local",
+  harborRegistry: process.env.HARBOR_REGISTRY || "192.168.56.32",
   harborProject: process.env.HARBOR_PROJECT || "app",
 
   frontendUrl: process.env.FRONTEND_URL || "http://platform.local",

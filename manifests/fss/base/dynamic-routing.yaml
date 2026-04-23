@@ -33,7 +33,7 @@ spec:
     spec:
       containers:
         - name: router
-          image: harbor.local/library/jupyter-pod-router:latest
+          image: 192.168.56.32/library/jupyter-pod-router:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -49,12 +49,18 @@ spec:
               value: "http://fss-dis-server.app.svc.cluster.local:3000"
             - name: ROUTER_SHARED_SECRET
               value: "change-this-jupyter-router-secret"
-            - name: ROUTER_ACCESS_COOKIE_NAME
-              value: "jupyter_route_access"
+            - name: ROUTER_RESOLVE_MODE
+              value: "deterministic"
+            - name: ROUTER_JUPYTER_TOKEN
+              value: "platform123"
+            - name: ROUTER_AUTH_COOKIE_NAME
+              value: "fss_app_session"
+            - name: ROUTER_USER_COOKIE_NAME
+              value: "jupyter_route_userid"
             - name: ROUTER_HEADLESS_SERVICE
               value: "jupyter-named-pod"
             - name: ROUTER_TARGET_NAMESPACE
-              value: "dis"
+              value: "data-platform-dev"
             - name: ROUTER_TARGET_PORT
               value: "8888"
           readinessProbe:

@@ -28,7 +28,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: nfs-test
-      image: harbor.local/app/fss-adw-server-node:latest
+      image: 192.168.56.32/app/fss-adw-server-node:latest
       imagePullPolicy: IfNotPresent
       command: ["/bin/sh", "/opt/test/hello.sh"]
       volumeMounts:

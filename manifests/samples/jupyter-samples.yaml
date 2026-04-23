@@ -57,6 +57,6 @@ spec:
     spec:
       containers:
       - name: app
-        image: harbor.local/app/jupyter:latest
+        image: 192.168.56.32/app/jupyter:latest
         imagePullPolicy: Always
         command: ["/bin/sh","-c","sleep 36000"]

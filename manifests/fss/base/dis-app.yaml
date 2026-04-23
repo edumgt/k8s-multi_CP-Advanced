@@ -11,13 +11,15 @@ data:
   K8S_APP_NAMESPACE: app
   K8S_USER_NAMESPACE: dis
   LAB_GOVERNANCE_ENABLED: "true"
-  JUPYTER_IMAGE: harbor.local/app/jupyter:latest
+  JUPYTER_IMAGE: 192.168.56.32/app/jupyter:latest
   JUPYTER_ACCESS_MODE: ingress-path
   JUPYTER_DYNAMIC_HOST_SUFFIX: platform.local
   JUPYTER_DYNAMIC_SCHEME: http
   JUPYTER_DYNAMIC_SUBDOMAIN: jupyter-named-pod
   JUPYTER_WORKSPACE_ROOT: /workspace/user-home
   JUPYTER_BOOTSTRAP_DIR: /opt/platform/bootstrap-workspace
+  JUPYTER_PERSONAL_PVC_NAME: ""
+  JUPYTER_PERSONAL_MOUNT_PATH: /personal
   AUTH_TOKEN_TTL_SECONDS: "28800"
   AUTH_SESSION_PREFIX: "fss:auth:session:"
   JUPYTER_ROUTE_ACCESS_TTL_SECONDS: "28800"
@@ -304,7 +306,7 @@ spec:
       serviceAccountName: fss-dis-server
       containers:
         - name: server
-          image: harbor.local/app/fss-adw-server-node:latest
+          image: 192.168.56.32/app/fss-adw-server-node:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -379,7 +381,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: harbor.local/app/fss-adw-frontend:latest
+          image: 192.168.56.32/app/fss-adw-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

@@ -12,7 +12,7 @@
 `192.168.56.240` 또는 `platform.local`용 Vue3 + Quasar SPA 프론트엔드입니다.
 
 ## 배포 대상
-- Registry image: `harbor.local/app/fss-adw-frontend`
+- Registry image: `192.168.56.32/app/fss-adw-frontend`
 - Kubernetes deployment: `fss-dis-frontend` (`infra/k8s/fss/base/dis-app.yaml`)
 
 ## 환경 파일

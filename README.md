@@ -156,7 +156,7 @@ grep server: ~/.kube/config
 ```txt
 192.168.56.240 platform.local
 192.168.56.31 nexus.local
-192.168.56.32 harbor.local
+https://192.168.56.32
 ```
 
 ## INTERNAL-IP 정리 메모

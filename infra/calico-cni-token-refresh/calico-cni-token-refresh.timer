@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodically refresh Calico CNI kubeconfig token
+
+[Timer]
+OnBootSec=5m
+OnUnitActiveSec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
