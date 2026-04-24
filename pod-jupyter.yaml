@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lab-test-user-c56486f8
+  namespace: dis
+spec:
+  securityContext:
+    fsGroup: 1000
+  initContainers:
+  - name: restore-workspace
+    image: 192.168.56.32/app/jupyter:latest
+    command: ["/bin/sh","-c","mkdir -p /workspace-volume/users/test-user-c56486f8 && cp -a /opt/platform/bootstrap-workspace/. /workspace-volume/users/test-user-c56486f8/ 2>/dev/null || true && chown -R 1000:100 /workspace-volume/users/test-user-c56486f8 || true"]
+    volumeMounts:
+    - name: jupyter-workspace
+      mountPath: /workspace-volume
+  containers:
+  - name: jupyter
+    image: 192.168.56.32/app/jupyter:latest
+    volumeMounts:
+    - name: jupyter-workspace
+      mountPath: /workspace/user-home
+      subPath: users/test-user-c56486f8
+    ports:
+    - containerPort: 8888
+  volumes:
+  - name: jupyter-workspace
+    persistentVolumeClaim:
+      claimName: pvc-jupyter-workspace
