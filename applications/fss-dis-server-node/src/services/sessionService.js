@@ -20,6 +20,8 @@ function toPublicSessionSummary(summary) {
     session_id: summary.session_id,
     username: summary.username,
     namespace: summary.namespace,
+    pod_name: summary.pod_name,
+    service_name: summary.service_name,
     workspace_subpath: summary.workspace_subpath,
     image: summary.image,
     status: summary.status,

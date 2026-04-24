@@ -8,6 +8,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { config } from "./config.js";
 import { requireAdmin, requireAuth, authorizeUsernameAccess, resolveAuthToken } from "./middleware/auth.js";
 import { connectMongo, connectRedis, getMongoReadyState, getRedis, closeAllConnections } from "./services/db.js";
+import { listUserMockPods } from "./services/mockPodService.js";
 import {
   authenticate,
   createManagedUser,
@@ -462,6 +463,16 @@ app.get(
   asyncHandler(async (req, res) => {
     const session = await getLabSession(req.targetUsername);
     res.json(session);
+  }),
+);
+
+app.get(
+  "/api/jupyter/pods/:username",
+  requireAuth,
+  authorizeUsernameAccess,
+  asyncHandler(async (req, res) => {
+    const items = await listUserMockPods(req.targetUsername);
+    res.json({ items });
   }),
 );
 

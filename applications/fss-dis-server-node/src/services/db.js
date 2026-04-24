@@ -15,6 +15,10 @@ export function getMongoReadyState() {
   return mongoose.connection.readyState;
 }
 
+export function getMongoDb() {
+  return mongoose.connection.db;
+}
+
 export function getRedis() {
   if (!redisClient) {
     redisClient = new Redis(config.redisUrl, {

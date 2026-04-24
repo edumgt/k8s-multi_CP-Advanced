@@ -166,76 +166,98 @@
             <q-card-section>
               <div class="row items-center justify-between q-col-gutter-md">
                 <div>
-                  <div class="section-title">Jupyter Pod Control</div>
-                  <div class="card-title">로그인한 사용자 전용 Jupyter Pod</div>
+                  <div class="section-title">Jupyter Pod Dashboard</div>
+                  <div class="card-title">사용자 Pod 목록</div>
                 </div>
                 <q-badge :color="labStatusColor" rounded>
-                  {{ labSession.status }}
+                  {{ userLabPods.length }} pods
                 </q-badge>
               </div>
 
               <p class="muted">
-                현재 로그인한 계정 <strong>{{ managedUsername }}</strong> 전용 Jupyter Pod를 실행하고,
-                중지하고, 준비가 끝나면 Pod 웹 화면으로 바로 연결할 수 있습니다.
+                현재 로그인한 계정 <strong>{{ managedUsername }}</strong> 기준 Pod 목록입니다. 각 행에서
+                상태에 따라 실행, 중지, 연결 버튼이 활성화됩니다.
               </p>
 
-              <div class="chip-grid">
-                <q-chip color="white" text-color="dark" square>
-                  <strong>User</strong>&nbsp;{{ managedUsername }}
-                </q-chip>
-                <q-chip color="white" text-color="dark" square>
-                  <strong>Workspace</strong>&nbsp;{{ labSession.workspace_subpath || "not created" }}
-                </q-chip>
-              </div>
-
-              <div class="lab-form">
-                <q-btn
-                  color="dark"
-                  unelevated
-                  no-caps
-                  icon="play_circle"
-                  label="Jupyter Pod 실행"
-                  :loading="sessionLoading"
-                  :disable="!canStartLabSession"
-                  @click="startLabSession"
-                />
-                <q-btn
-                  outline
-                  color="dark"
-                  no-caps
-                  icon="open_in_new"
-                  label="Jupyter Pod 연결"
-                  :disable="!canOpenLabSession"
-                  @click="openLab"
-                />
-                <q-btn
-                  flat
-                  color="negative"
-                  no-caps
-                  icon="delete"
-                  label="Jupyter Pod 중지"
-                  :loading="sessionLoading"
-                  :disable="!canStopLabSession"
-                  @click="stopLabSession"
-                />
-              </div>
-
               <q-linear-progress
-                v-if="labSession.status === 'provisioning'"
+                v-if="sessionLoading || podInventoryLoading"
                 indeterminate
                 color="dark"
                 class="lab-progress"
               />
 
-              <q-banner rounded class="banner-note lab-banner">
-                <div><strong>Pod Status</strong> {{ labSession.detail }}</div>
-                <div v-if="labSession.workspace_subpath">Workspace: {{ labSession.workspace_subpath }}</div>
-                <div v-if="labSession.node_port">NodePort: {{ labSession.node_port }}</div>
-                <div v-if="labSession.image" class="lab-url">Image: {{ labSession.image }}</div>
-                <div v-if="labSession.snapshot_status">Snapshot Publish: {{ labSession.snapshot_status }}</div>
-                <div v-if="labSession.snapshot_job_name">Snapshot Job: {{ labSession.snapshot_job_name }}</div>
-                <div v-if="labSession.snapshot_detail">Snapshot Detail: {{ labSession.snapshot_detail }}</div>
-              </q-banner>
+              <q-list bordered separator class="rounded-borders bg-white">
+                <q-item-label header>User Pod Inventory</q-item-label>
+                <q-item v-for="pod in userLabPods" :key="pod.pod_name || pod.session_id">
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium">
+                      {{ pod.pod_name || "unnamed-pod" }}
+                    </q-item-label>
+                    <q-item-label caption>
+                      {{ pod.namespace || "-" }} · {{ pod.workspace_subpath || "workspace pending" }}
+                    </q-item-label>
+                    <q-item-label v-if="pod.image" caption>
+                      {{ pod.image }}
+                    </q-item-label>
+                    <q-item-label v-if="pod.detail" caption>
+                      {{ pod.detail }}
+                    </q-item-label>
+                  </q-item-section>
+                  <q-item-section side top>
+                    <q-badge :color="podInventoryStatusColor(pod.status)" rounded>
+                      {{ pod.status }}
+                    </q-badge>
+                    <q-badge v-if="pod.is_active_session" color="dark" rounded class="q-mt-sm">
+                      current route
+                    </q-badge>
+                    <q-badge v-else-if="pod.source" color="grey-7" rounded class="q-mt-sm">
+                      {{ pod.source }}
+                    </q-badge>
+                    <div class="row q-col-gutter-sm q-mt-sm no-wrap">
+                      <q-btn
+                        color="dark"
+                        unelevated
+                        no-caps
+                        dense
+                        icon="play_circle"
+                        label="실행"
+                        :loading="sessionLoading && pod.is_active_session"
+                        :disable="!canStartPodItem(pod)"
+                        @click="runPodAction('start', pod)"
+                      />
+                      <q-btn
+                        outline
+                        color="dark"
+                        no-caps
+                        dense
+                        icon="open_in_new"
+                        label="연결"
+                        :disable="!canOpenPodItem(pod)"
+                        @click="runPodAction('open', pod)"
+                      />
+                      <q-btn
+                        flat
+                        color="negative"
+                        no-caps
+                        dense
+                        icon="delete"
+                        label="중지"
+                        :loading="sessionLoading && pod.is_active_session"
+                        :disable="!canStopPodItem(pod)"
+                        @click="runPodAction('stop', pod)"
+                      />
+                    </div>
+                  </q-item-section>
+                </q-item>
+                <q-item v-if="!userLabPods.length">
+                  <q-item-section>
+                    <q-item-label>No Pod records yet.</q-item-label>
+                    <q-item-label caption>
+                      Start a Jupyter Pod or seed mock Pod rows to populate this list.
+                    </q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
             </q-card-section>
           </q-card>
 
@@ -1257,6 +1279,7 @@ const sessionLoading = ref(false);
 const snapshotLoading = ref(false);
 const adminLoading = ref(false);
 const usageLoading = ref(false);
+const podInventoryLoading = ref(false);
 const leftDrawerOpen = ref(typeof window !== "undefined" ? window.innerWidth >= 1024 : true);
 const authResolved = ref(false);
 
@@ -1272,6 +1295,7 @@ const loginForm = ref({
 
 const appSession = ref(emptyAppSession(savedAuthToken, savedAuthUser));
 const labSession = ref(emptyLabSession());
+const labPodInventory = ref([]);
 const snapshotState = ref(emptySnapshotState());
 const adminOverview = ref(emptyAdminOverview());
 const userUsage = ref(emptyUserUsage());
@@ -1412,6 +1436,95 @@ const canOpenLabSession = computed(() => {
     return false;
   }
   return labConnectReady.value;
+});
+
+function isControllablePodItem(pod) {
+  return Boolean(pod?.is_active_session);
+}
+
+function canStartPodItem(pod) {
+  if (!isControllablePodItem(pod)) {
+    return false;
+  }
+  const status = String(pod?.status || "").toLowerCase();
+  return !["ready", "provisioning"].includes(status) && canStartLabSession.value;
+}
+
+function canStopPodItem(pod) {
+  if (!isControllablePodItem(pod)) {
+    return false;
+  }
+  const status = String(pod?.status || "").toLowerCase();
+  return !["idle", "missing"].includes(status) && canStopLabSession.value;
+}
+
+function canOpenPodItem(pod) {
+  if (!isControllablePodItem(pod)) {
+    return false;
+  }
+  const status = String(pod?.status || "").toLowerCase();
+  return (Boolean(pod?.ready) || status === "ready") && canOpenLabSession.value;
+}
+
+function runPodAction(action, pod) {
+  if (action === "start" && canStartPodItem(pod)) {
+    void startLabSession();
+    return;
+  }
+  if (action === "stop" && canStopPodItem(pod)) {
+    void stopLabSession();
+    return;
+  }
+  if (action === "open" && canOpenPodItem(pod)) {
+    void openLab();
+    return;
+  }
+}
+
+const userLabPods = computed(() => {
+  const items = [];
+  const currentSessionPod = String(labSession.value.pod_name || "").trim();
+
+  if (currentSessionPod) {
+    items.push({
+      pod_name: currentSessionPod,
+      namespace: labSession.value.namespace,
+      workspace_subpath: labSession.value.workspace_subpath,
+      image: labSession.value.image,
+      status: labSession.value.status,
+      ready: Boolean(labSession.value.ready),
+      created_at: labSession.value.created_at,
+      detail: labSession.value.detail,
+      source: "active-session",
+      is_active_session: true,
+      session_id: labSession.value.session_id,
+    });
+  }
+
+  for (const item of labPodInventory.value) {
+    const podName = String(item?.pod_name || "").trim();
+    if (!podName) {
+      continue;
+    }
+    const existing = items.find((pod) => pod.pod_name === podName);
+    if (existing) {
+      Object.assign(existing, {
+        ...item,
+        is_active_session: existing.is_active_session,
+      });
+    } else {
+      items.push({
+        ...item,
+        is_active_session: podName === currentSessionPod,
+      });
+    }
+  }
+
+  return items.sort((a, b) => {
+    if (a.is_active_session && !b.is_active_session) return -1;
+    if (!a.is_active_session && b.is_active_session) return 1;
+    return String(a.pod_name).localeCompare(String(b.pod_name));
+  });
 });
 
 const menuNavLinks = computed(() => {
@@ -1750,6 +1863,8 @@ function emptyLabSession() {
     session_id: "",
     username: "",
     namespace: "",
+    pod_name: "",
+    service_name: "",
     workspace_subpath: "",
     image: "",
     status: "idle",
@@ -1968,6 +2083,20 @@ function podStatusColor(status) {
   return "negative";
 }
 
+function podInventoryStatusColor(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (["ready", "running"].includes(normalized)) {
+    return "positive";
+  }
+  if (["provisioning", "pending"].includes(normalized)) {
+    return "warning";
+  }
+  if (["idle", "missing"].includes(normalized)) {
+    return "grey-7";
+  }
+  return "negative";
+}
+
 function requestStatusColor(status) {
   if (status === "approved") {
     return "positive";
@@ -2093,6 +2222,7 @@ function resetRoleScopedState() {
   stopLabPolling();
   stopAdminPolling();
   labSession.value = emptyLabSession();
+  labPodInventory.value = [];
   snapshotState.value = emptySnapshotState();
   userUsage.value = emptyUserUsage();
   userLabPolicy.value = emptyUserLabPolicy();
@@ -2148,6 +2278,33 @@ async function loadUserUsage(options = {}) {
     }
   } finally {
     usageLoading.value = false;
+  }
+}
+
+async function loadLabPodInventory(options = {}) {
+  if (!isUser.value || !managedUsername.value || podInventoryLoading.value) {
+    return;
+  }
+
+  podInventoryLoading.value = true;
+  try {
+    const response = await fetch(
+      `${apiBaseUrl}/api/jupyter/pods/${encodeURIComponent(managedUsername.value)}`,
+      {
+        headers: authHeaders(),
+      },
+    );
+    const payload = await parseJson(response);
+    labPodInventory.value = Array.isArray(payload.items) ? payload.items : [];
+  } catch (error) {
+    if (!options.silent) {
+      Notify.create({
+        type: "negative",
+        message: error.message,
+      });
+    }
+  } finally {
+    podInventoryLoading.value = false;
   }
 }
 
@@ -2549,6 +2706,7 @@ async function loginApp() {
 
     if (authenticatedUser.role === "user") {
       await refreshLabSession({ silent: true, skipSnapshotRefresh: true });
+      await loadLabPodInventory({ silent: true });
       await refreshSnapshotStatus({ silent: true });
       if (snapshotState.value.status === "building" || snapshotState.value.status === "pending") {
         void waitForSnapshotCompletion({
@@ -2688,6 +2846,7 @@ async function refreshLabSession(options = {}) {
     if (!options.skipSnapshotRefresh) {
       void refreshSnapshotStatus({ silent: true });
     }
+    void loadLabPodInventory({ silent: true });
     void loadUserUsage({ silent: true });
   } catch (error) {
     stopLabPolling();
@@ -3073,6 +3232,7 @@ onMounted(async () => {
 
   if (isUser.value) {
     await refreshLabSession({ silent: true, skipSnapshotRefresh: true });
+    await loadLabPodInventory({ silent: true });
     await refreshSnapshotStatus({ silent: true });
     if (snapshotState.value.status === "building" || snapshotState.value.status === "pending") {
       void waitForSnapshotCompletion({
