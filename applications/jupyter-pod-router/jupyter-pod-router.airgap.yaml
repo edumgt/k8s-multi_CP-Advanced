@@ -33,12 +33,10 @@ spec:
       labels:
         app.kubernetes.io/name: jupyter-pod-router
     spec:
-      imagePullSecrets:
-      - name: dis-harbor-pull
       containers:
       - name: router
-        image: 10.111.111.72:80/app/jupyter-pod-router:0.1.0
-        imagePullPolicy: IfNotPresent
+        image: 192.168.56.32/library/jupyter-pod-router:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
           name: http

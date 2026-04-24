@@ -1,17 +1,16 @@
 import { config, isDynamicRouteMode, isIngressPathMode } from "../config.js";
 import { buildLabIdentity, buildSessionToken } from "../utils/labIdentity.js";
+import { listUserMockPods } from "./mockPodService.js";
 import {
   recordLabLaunch,
   recordLabStop,
   syncSessionActivity,
 } from "./authService.js";
 import { getUserLabLaunchProfile } from "./governanceService.js";
+import { ensureStoredLabIdentity, getStoredLabIdentity, persistLabIdentity } from "./labIdentityService.js";
 import {
-  buildSessionSummary,
   createOrEnsureSessionPod,
   deleteSessionPod,
-  readPod,
-  readService,
 } from "./k8sService.js";
 
 function toPublicSessionSummary(summary) {
@@ -22,6 +21,7 @@ function toPublicSessionSummary(summary) {
     namespace: summary.namespace,
     pod_name: summary.pod_name,
     service_name: summary.service_name,
+    headless_service: summary.headless_service,
     workspace_subpath: summary.workspace_subpath,
     image: summary.image,
     status: summary.status,
@@ -36,16 +36,66 @@ function toPublicSessionSummary(summary) {
   };
 }
 
+function toPublicPodItem(summary) {
+  if (!summary) return null;
+  return {
+    username: summary.username,
+    pod_name: summary.pod_name,
+    namespace: summary.namespace,
+    status: summary.status,
+    phase: summary.phase,
+    ready: summary.ready,
+    image: summary.image,
+    headless_service: summary.headless_service,
+    service_name: summary.service_name,
+    workspace_subpath: summary.workspace_subpath,
+    node_port: summary.node_port,
+    detail: summary.detail,
+    created_at: summary.created_at,
+    updated_at: summary.created_at,
+    source: "k8s-session",
+  };
+}
+
 async function readLabSessionSummary(username) {
-  const identity = buildLabIdentity(username);
-  const pod = await readPod(identity.pod_name);
-  const service = isDynamicRouteMode() || isIngressPathMode() ? null : await readService(identity.service_name);
-  const summary = buildSessionSummary({
-    identity,
-    pod,
-    service,
-    launchImage: config.jupyterImage,
-  });
+  const identity = await ensureStoredLabIdentity(username);
+  if (!identity) {
+    return {
+      session_id: "",
+      username,
+      namespace: config.k8sUserNamespace,
+      pod_name: "",
+      service_name: "",
+      headless_service: "",
+      workspace_subpath: "",
+      image: config.jupyterImage,
+      status: "missing",
+      phase: "Missing",
+      ready: false,
+      detail: "No adw.userpods entry exists for this user.",
+      node_port: null,
+      created_at: null,
+    };
+  }
+
+  const items = await listUserMockPods(identity.username);
+  const matched = items.find((item) => item.pod_name === identity.pod_name) || items[0] || null;
+  const summary = {
+    session_id: identity.session_id,
+    username: identity.username,
+    namespace: matched?.namespace || config.k8sUserNamespace,
+    pod_name: identity.pod_name,
+    service_name: identity.service_name,
+    headless_service: identity.headless_service || config.jupyterDynamicSubdomain,
+    workspace_subpath: identity.workspace_subpath,
+    image: matched?.image || config.jupyterImage,
+    status: matched?.status || "missing",
+    phase: matched?.status || "Missing",
+    ready: Boolean(matched?.ready),
+    detail: matched ? "Loaded from adw.userpods." : "No adw.userpods entry exists for this user.",
+    node_port: null,
+    created_at: matched?.created_at || null,
+  };
   await syncSessionActivity(identity.username, summary);
   return summary;
 }
@@ -72,8 +122,17 @@ export async function getLabSession(username) {
   return toPublicSessionSummary(summary);
 }
 
+export async function listUserPods(username) {
+  const session = await getLabSession(username);
+  const item = toPublicPodItem(session);
+  return item?.pod_name ? [item] : [];
+}
+
 export async function ensureLabSession(username) {
-  const identity = buildLabIdentity(username);
+  const identity = await ensureStoredLabIdentity(username);
+  if (!identity) {
+    throw new Error("No adw.userpods entry exists for this user.");
+  }
   const launchImage = config.jupyterImage;
 
   let launchProfilePayload = null;
@@ -97,17 +156,11 @@ export async function ensureLabSession(username) {
     throw new Error("User PVC is not assigned. Approve resource request first.");
   }
 
-  const before = await readPod(identity.pod_name);
-  const createdNew = !before;
-  const { pod, service } = await createOrEnsureSessionPod({ identity, launchProfile });
-  const summary = buildSessionSummary({
-    identity,
-    pod,
-    service,
-    launchImage: launchProfile.image,
-  });
+  await persistLabIdentity(identity, { image: launchProfile.image });
+  await createOrEnsureSessionPod({ identity, launchProfile });
+  const summary = await readLabSessionSummary(identity.username);
 
-  if (createdNew) {
+  if (summary.created_at) {
     await recordLabLaunch(identity.username, summary.created_at);
   } else {
     await syncSessionActivity(identity.username, summary);
@@ -117,7 +170,10 @@ export async function ensureLabSession(username) {
 }
 
 export async function deleteLabSession(username) {
-  const identity = buildLabIdentity(username);
+  const identity = await getStoredLabIdentity(username);
+  if (!identity) {
+    throw new Error("No adw.userpods entry exists for this user.");
+  }
   const summary = await readLabSessionSummary(identity.username);
   await deleteSessionPod(identity);
   await recordLabStop(identity.username);
@@ -127,7 +183,7 @@ export async function deleteLabSession(username) {
     status: "deleted",
     phase: "Deleted",
     ready: false,
-    detail: "Personal JupyterLab session resources were deleted.",
+    detail: "Personal JupyterLab session delete was requested. Physical state should be checked via K8s APIs.",
     node_port: null,
     snapshot_status: "skipped",
     snapshot_job_name: null,
@@ -164,7 +220,10 @@ export async function buildConnectResponse(summary, username, req = null) {
     };
   }
   if (isDynamicRouteMode()) {
-    const identity = buildLabIdentity(username);
+    const identity = await getStoredLabIdentity(username);
+    if (!identity) {
+      throw new Error("No adw.userpods entry exists for this user.");
+    }
     const token = buildSessionToken(config.jupyterToken, identity.session_id);
     const suffix = String(config.jupyterDynamicHostSuffix || "").trim().replace(/^\.+|\.+$/g, "");
     if (!suffix) {
@@ -179,7 +238,10 @@ export async function buildConnectResponse(summary, username, req = null) {
   if (!summary.node_port) {
     throw new Error("NodePort is not available.");
   }
-  const identity = buildLabIdentity(username);
+  const identity = await getStoredLabIdentity(username);
+  if (!identity) {
+    throw new Error("No adw.userpods entry exists for this user.");
+  }
   const token = buildSessionToken(config.jupyterToken, identity.session_id);
   return {
     redirect_url: `${frontend.protocol}//${frontend.hostname}:${summary.node_port}/lab?token=${encodeURIComponent(token)}`,
@@ -193,7 +255,10 @@ export async function resolveJupyterRouteSession(username) {
     throw new Error("Jupyter route userid is required.");
   }
 
-  const identity = buildLabIdentity(requestedUsername);
+  const identity = await getStoredLabIdentity(requestedUsername);
+  if (!identity) {
+    throw new Error("No adw.userpods entry exists for this user.");
+  }
   const summary = await readLabSessionSummary(identity.username);
   if (!summary?.ready) {
     throw new Error("JupyterLab is not ready yet.");
@@ -202,7 +267,8 @@ export async function resolveJupyterRouteSession(username) {
   return {
     username: identity.username,
     pod_name: identity.pod_name,
-    upstream_host: `${identity.pod_name}.${config.jupyterDynamicSubdomain}.${config.k8sUserNamespace}.svc.cluster.local`,
+    headless_service: identity.headless_service,
+    upstream_host: `${identity.pod_name}.${identity.headless_service}.${config.k8sUserNamespace}.svc.cluster.local`,
     token: buildSessionToken(config.jupyterToken, identity.session_id),
   };
 }

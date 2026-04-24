@@ -1,14 +1,16 @@
 import http from "node:http";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 import cors from "cors";
 import express from "express";
 import { Server as SocketIOServer } from "socket.io";
+import swaggerUi from "swagger-ui-express";
 
 import { config } from "./config.js";
+import { swaggerSpec } from "./swagger.js";
 import { requireAdmin, requireAuth, authorizeUsernameAccess, resolveAuthToken } from "./middleware/auth.js";
 import { connectMongo, connectRedis, getMongoReadyState, getRedis, closeAllConnections } from "./services/db.js";
-import { listUserMockPods } from "./services/mockPodService.js";
 import {
   authenticate,
   createManagedUser,
@@ -39,6 +41,7 @@ import {
   ensureLabSession,
   getLabSession,
   getSnapshotStatus,
+  listUserPods,
   publishSnapshot,
   resolveJupyterRouteSession,
 } from "./services/sessionService.js";
@@ -49,6 +52,7 @@ import { toDemoUserInfo } from "./utils/formatters.js";
 
 const app = express();
 const server = http.createServer(app);
+const swaggerCustomJsPath = fileURLToPath(new URL("../public/swagger-custom.js", import.meta.url));
 app.set("trust proxy", true);
 const io = new SocketIOServer(server, {
   cors: {
@@ -85,6 +89,25 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "2mb" }));
+app.get("/openapi.json", (_req, res) => {
+  res.json(swaggerSpec);
+});
+app.get("/docs/swagger-custom.js", (_req, res) => {
+  res.type("application/javascript");
+  res.sendFile(swaggerCustomJsPath);
+});
+app.use(
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    customJs: config.backendBasePath === "/"
+      ? "/docs/swagger-custom.js"
+      : `${config.backendBasePath}/docs/swagger-custom.js`,
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  }),
+);
 
 function asyncHandler(handler) {
   return (req, res, next) => {
@@ -471,7 +494,7 @@ app.get(
   requireAuth,
   authorizeUsernameAccess,
   asyncHandler(async (req, res) => {
-    const items = await listUserMockPods(req.targetUsername);
+    const items = await listUserPods(req.targetUsername);
     res.json({ items });
   }),
 );

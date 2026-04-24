@@ -1,0 +1,565 @@
+---
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev","app.kubernetes.io/topology":"three-node"},"name":"pv-dev-3node-gitlab-config"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"10Gi"},"claimRef":{"name":"gitlab-config","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/gitlab-config","type":"DirectoryOrCreate"},"nodeAffinity":{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["k8s-worker-2"]}]}]}},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T12:01:15Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+      app.kubernetes.io/topology: three-node
+    name: pv-dev-3node-gitlab-config
+    resourceVersion: '38217'
+    uid: 19630e43-b339-4dd1-84a9-c8344467cf2c
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 10Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: gitlab-config
+      namespace: data-platform-dev
+      resourceVersion: '38214'
+      uid: 0891b345-9686-4ae3-a675-60489555aaa1
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/gitlab-config
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k8s-worker-2
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T12:01:15Z'
+    phase: Bound
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev","app.kubernetes.io/topology":"three-node"},"name":"pv-dev-3node-gitlab-data"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"60Gi"},"claimRef":{"name":"gitlab-data","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/gitlab-data","type":"DirectoryOrCreate"},"nodeAffinity":{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["k8s-worker-2"]}]}]}},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T12:01:15Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+      app.kubernetes.io/topology: three-node
+    name: pv-dev-3node-gitlab-data
+    resourceVersion: '38223'
+    uid: d2b1fd1e-cc9a-4d0c-87f3-46d6beeb0c76
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 60Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: gitlab-data
+      namespace: data-platform-dev
+      resourceVersion: '38216'
+      uid: 33cc3d99-b423-4a21-9825-e6fe34de17c2
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/gitlab-data
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k8s-worker-2
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T12:01:15Z'
+    phase: Bound
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev","app.kubernetes.io/topology":"three-node"},"name":"pv-dev-3node-gitlab-logs"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"10Gi"},"claimRef":{"name":"gitlab-logs","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/gitlab-logs","type":"DirectoryOrCreate"},"nodeAffinity":{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["k8s-worker-2"]}]}]}},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T12:01:15Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+      app.kubernetes.io/topology: three-node
+    name: pv-dev-3node-gitlab-logs
+    resourceVersion: '38229'
+    uid: 7aea31e5-ac41-4efa-a325-59f93e5383ab
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 10Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: gitlab-logs
+      namespace: data-platform-dev
+      resourceVersion: '38219'
+      uid: 1cd38e46-718f-402b-b076-0413593da5b3
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/gitlab-logs
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k8s-worker-2
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T12:01:16Z'
+    phase: Bound
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev","app.kubernetes.io/topology":"three-node"},"name":"pv-dev-3node-jupyter-workspace"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"10Gi"},"claimRef":{"name":"jupyter-workspace","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/jupyter-workspace","type":"DirectoryOrCreate"},"nodeAffinity":{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["k8s-worker-3"]}]}]}},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-30T10:35:31Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+      app.kubernetes.io/topology: three-node
+    name: pv-dev-3node-jupyter-workspace
+    resourceVersion: '171758'
+    uid: c15307ec-7c57-4141-9abe-29baaee3a3b7
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 10Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: jupyter-workspace
+      namespace: data-platform-dev
+      resourceVersion: '171756'
+      uid: cce5e950-85ce-4a01-9288-c40c8089b47c
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/jupyter-workspace
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k8s-worker-3
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-30T10:35:31Z'
+    phase: Bound
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev","app.kubernetes.io/topology":"three-node"},"name":"pv-dev-3node-mongo-data"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"8Gi"},"claimRef":{"name":"mongo-data-mongodb-0","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/mongo-data","type":"DirectoryOrCreate"},"nodeAffinity":{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["k8s-worker-2"]}]}]}},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T12:01:15Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+      app.kubernetes.io/topology: three-node
+    name: pv-dev-3node-mongo-data
+    resourceVersion: '38335'
+    uid: 287b96a2-672e-4bc5-958b-9ede71c4df94
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 8Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: mongo-data-mongodb-0
+      namespace: data-platform-dev
+      resourceVersion: '38333'
+      uid: 3e1d5e11-eb18-4827-9632-5b246f512c57
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/mongo-data
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k8s-worker-2
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T12:01:17Z'
+    phase: Bound
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev","app.kubernetes.io/topology":"three-node"},"name":"pv-dev-3node-nexus-data"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"80Gi"},"claimRef":{"name":"nexus-data","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/nexus-data","type":"DirectoryOrCreate"},"nodeAffinity":{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["k8s-worker-2"]}]}]}},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T12:01:15Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+      app.kubernetes.io/topology: three-node
+    name: pv-dev-3node-nexus-data
+    resourceVersion: '38277'
+    uid: 9c0f654c-5eb4-475c-ba7f-23d4dbeb1639
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 80Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: nexus-data
+      namespace: data-platform-dev
+      resourceVersion: '38225'
+      uid: d69c2b06-433f-4efe-b182-aa2b75c547ae
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/nexus-data
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k8s-worker-2
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T12:01:16Z'
+    phase: Bound
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev"},"name":"pv-dev-gitlab-config"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"10Gi"},"claimRef":{"name":"gitlab-config","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/gitlab-config","type":"DirectoryOrCreate"},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T05:57:48Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+    name: pv-dev-gitlab-config
+    resourceVersion: '36111'
+    uid: a6108f0d-0ac1-4107-b20f-beea5427b600
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 10Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: gitlab-config
+      namespace: data-platform-dev
+      resourceVersion: '731'
+      uid: ad2586be-d557-4a61-b3bb-97793a24c413
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/gitlab-config
+      type: DirectoryOrCreate
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T11:47:42Z'
+    phase: Released
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev"},"name":"pv-dev-gitlab-data"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"60Gi"},"claimRef":{"name":"gitlab-data","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/gitlab-data","type":"DirectoryOrCreate"},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T05:57:48Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+    name: pv-dev-gitlab-data
+    resourceVersion: '36113'
+    uid: f64855c4-0605-4b04-a3f8-79ed77b03985
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 60Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: gitlab-data
+      namespace: data-platform-dev
+      resourceVersion: '735'
+      uid: e269ffba-6a31-48ff-a9f0-2d5517a2793a
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/gitlab-data
+      type: DirectoryOrCreate
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T11:47:43Z'
+    phase: Released
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev"},"name":"pv-dev-gitlab-logs"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"10Gi"},"claimRef":{"name":"gitlab-logs","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/gitlab-logs","type":"DirectoryOrCreate"},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T05:57:48Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+    name: pv-dev-gitlab-logs
+    resourceVersion: '36112'
+    uid: 6436e4a3-106a-4834-a6c0-ed26bbf7db88
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 10Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: gitlab-logs
+      namespace: data-platform-dev
+      resourceVersion: '737'
+      uid: 461a4286-a50c-4970-9208-abb12c33be5c
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/gitlab-logs
+      type: DirectoryOrCreate
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T11:47:42Z'
+    phase: Released
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev"},"name":"pv-dev-jupyter-workspace"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"10Gi"},"claimRef":{"name":"jupyter-workspace","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/jupyter-workspace","type":"DirectoryOrCreate"},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T05:57:48Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+    name: pv-dev-jupyter-workspace
+    resourceVersion: '36114'
+    uid: e58717ac-474d-44f6-8527-eab863a8b10f
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 10Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: jupyter-workspace
+      namespace: data-platform-dev
+      resourceVersion: '740'
+      uid: bf65203f-67f1-4031-9e8b-ffc43cfffc9a
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/jupyter-workspace
+      type: DirectoryOrCreate
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T11:47:43Z'
+    phase: Released
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev"},"name":"pv-dev-mongo-data"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"8Gi"},"claimRef":{"name":"mongo-data-mongodb-0","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/mongo-data","type":"DirectoryOrCreate"},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T05:57:48Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+    name: pv-dev-mongo-data
+    resourceVersion: '36168'
+    uid: 4c9c1b7e-cbe5-4ea8-9bb6-79d230097e77
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 8Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: mongo-data-mongodb-0
+      namespace: data-platform-dev
+      resourceVersion: '846'
+      uid: e457dedc-57ec-4e94-b489-e3a853467c90
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/mongo-data
+      type: DirectoryOrCreate
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T11:47:44Z'
+    phase: Released
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev"},"name":"pv-dev-nexus-data"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"80Gi"},"claimRef":{"name":"nexus-data","namespace":"data-platform-dev"},"hostPath":{"path":"/var/lib/k8s-data-platform/pv/nexus-data","type":"DirectoryOrCreate"},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-03-22T05:57:48Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+    name: pv-dev-nexus-data
+    resourceVersion: '36109'
+    uid: 2d1d0448-71f4-4477-954e-4a7d50fa56fb
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 80Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: nexus-data
+      namespace: data-platform-dev
+      resourceVersion: '743'
+      uid: b18f4b32-cc81-4f7c-977b-970f09746c83
+    hostPath:
+      path: /var/lib/k8s-data-platform/pv/nexus-data
+      type: DirectoryOrCreate
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-03-22T11:47:42Z'
+    phase: Released
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev"},"name":"pv-fss-dev-mongo-data"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"20Gi"},"claimRef":{"name":"mongo-data-mongo-0","namespace":"infra"},"hostPath":{"path":"/var/lib/fss-dis-platform/pv/fss-mongo-data","type":"DirectoryOrCreate"},"nodeAffinity":{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["k8s-worker-2"]}]}]}},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-04-23T05:30:41Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+    name: pv-fss-dev-mongo-data
+    resourceVersion: '1000541787'
+    uid: 3904cc5d-303b-463b-b3f8-14512ed4e900
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 20Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: mongo-data-mongo-0
+      namespace: infra
+      resourceVersion: '1000541780'
+      uid: fe59cc19-422a-44e9-8fce-b8641bf050d4
+    hostPath:
+      path: /var/lib/fss-dis-platform/pv/fss-mongo-data
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k8s-worker-2
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-04-23T05:30:42Z'
+    phase: Bound
+- apiVersion: v1
+  kind: PersistentVolume
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: '{"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"labels":{"app.kubernetes.io/environment":"dev"},"name":"pv-fss-dev-redis-data"},"spec":{"accessModes":["ReadWriteOnce"],"capacity":{"storage":"10Gi"},"claimRef":{"name":"redis-data-redis-0","namespace":"infra"},"hostPath":{"path":"/var/lib/fss-dis-platform/pv/fss-redis-data","type":"DirectoryOrCreate"},"nodeAffinity":{"required":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/hostname","operator":"In","values":["k8s-worker-2"]}]}]}},"persistentVolumeReclaimPolicy":"Retain","storageClassName":""}}
+
+        '
+    creationTimestamp: '2026-04-23T05:30:42Z'
+    finalizers:
+    - kubernetes.io/pv-protection
+    labels:
+      app.kubernetes.io/environment: dev
+    name: pv-fss-dev-redis-data
+    resourceVersion: '1000541804'
+    uid: c8f7408c-46a8-43dd-833f-f1fa510d291b
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    capacity:
+      storage: 10Gi
+    claimRef:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      name: redis-data-redis-0
+      namespace: infra
+      resourceVersion: '1000541782'
+      uid: 2650943f-ca8a-479f-a99f-e274f4db0de1
+    hostPath:
+      path: /var/lib/fss-dis-platform/pv/fss-redis-data
+      type: DirectoryOrCreate
+    nodeAffinity:
+      required:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k8s-worker-2
+    persistentVolumeReclaimPolicy: Retain
+    volumeMode: Filesystem
+  status:
+    lastPhaseTransitionTime: '2026-04-23T05:30:42Z'
+    phase: Bound
+kind: List
+metadata: {}

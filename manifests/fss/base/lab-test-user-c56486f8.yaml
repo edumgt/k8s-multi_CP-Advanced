@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lab-test-user-c56486f8
+  namespace: dis
+  labels:
+    app: jupyter-session
+    app.kubernetes.io/name: jupyter-session
+    app.kubernetes.io/managed-by: fss-dis-server-node
+    app.kubernetes.io/component: user-jupyter
+    platform.dev/session-id: test-user-c56486f8
+  annotations:
+    platform.dev/username: test-user
+    platform.dev/workspace-subpath: users/test-user-c56486f8
+    platform.dev/launch-image: 192.168.56.32/app/jupyter:latest
+    platform.dev/workspace-pvc: ""
+spec:
+  restartPolicy: Always
+  terminationGracePeriodSeconds: 15
+  hostname: lab-test-user-c56486f8
+  subdomain: jupyter-named-pod
+  initContainers:
+    - name: restore-workspace
+      image: 192.168.56.32/app/jupyter:latest
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -eu
+          mkdir -p "/workspace-volume/users/test-user-c56486f8"
+          if [ -d "/opt/platform/bootstrap-workspace" ]; then
+            cp -a /opt/platform/bootstrap-workspace/. "/workspace-volume/users/test-user-c56486f8/" 2>/dev/null || true
+          fi
+          chown -R 1000:100 "/workspace-volume/users/test-user-c56486f8" || true
+      env:
+        - name: JUPYTER_ROOT_DIR
+          value: /workspace/user-home
+        - name: JUPYTER_BOOTSTRAP_DIR
+          value: /opt/platform/bootstrap-workspace
+      volumeMounts:
+        - name: jupyter-workspace
+          mountPath: /workspace-volume
+  containers:
+    - name: jupyter
+      image: 192.168.56.32/app/jupyter:latest
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 8888
+      env:
+        - name: JUPYTER_TOKEN
+          value: platform123-test-user-c56486f8
+        - name: JUPYTER_ROOT_DIR
+          value: /workspace/user-home
+        - name: JUPYTER_BOOTSTRAP_DIR
+          value: /opt/platform/bootstrap-workspace
+        - name: JUPYTER_BASE_URL
+          value: /jupyter
+        - name: PLATFORM_LAB_USERNAME
+          value: test-user
+        - name: PLATFORM_LAB_SESSION_ID
+          value: test-user-c56486f8
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 1Gi
+      volumeMounts:
+        - name: jupyter-workspace
+          mountPath: /workspace/user-home
+          subPath: users/test-user-c56486f8
+      readinessProbe:
+        httpGet:
+          path: /jupyter/lab
+          port: 8888
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 2
+        failureThreshold: 18
+      livenessProbe:
+        httpGet:
+          path: /jupyter/lab
+          port: 8888
+        initialDelaySeconds: 20
+        periodSeconds: 10
+        timeoutSeconds: 2
+        failureThreshold: 6
+  volumes:
+    - name: jupyter-workspace
+      emptyDir: {}

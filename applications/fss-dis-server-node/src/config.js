@@ -32,7 +32,7 @@ export const config = {
   backendBasePath: normalizeBasePath(process.env.BACKEND_BASE_PATH, "/fss-dis-server"),
   mongoUri:
     process.env.MONGO_URI ||
-    "mongodb://root:root-password@mongo.infra.svc.cluster.local:27017/fss_dis?authSource=admin",
+    "mongodb://root:root-password@mongo.infra.svc.cluster.local:27017/adw?authSource=admin",
   redisUrl:
     process.env.REDIS_URL ||
     "redis://root:root-password@redis.infra.svc.cluster.local:6379/0",

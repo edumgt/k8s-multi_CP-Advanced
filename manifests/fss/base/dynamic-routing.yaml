@@ -60,7 +60,7 @@ spec:
             - name: ROUTER_HEADLESS_SERVICE
               value: "jupyter-named-pod"
             - name: ROUTER_TARGET_NAMESPACE
-              value: "data-platform-dev"
+              value: "dis"
             - name: ROUTER_TARGET_PORT
               value: "8888"
           readinessProbe:

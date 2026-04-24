@@ -9,9 +9,10 @@ import {
   ResourceRequest,
 } from "../models/index.js";
 import { toAnalysisEnvironmentItem, toEnvironmentRequestItem, toResourceRequestItem } from "../utils/formatters.js";
-import { canonicalUsername, buildLabIdentity } from "../utils/labIdentity.js";
+import { canonicalUsername } from "../utils/labIdentity.js";
 import { findUser } from "./authService.js";
 import { ensureUserHomePvc } from "./k8sService.js";
+import { ensureStoredLabIdentity } from "./labIdentityService.js";
 
 const DEFAULT_ENV_ID = "jupyter";
 
@@ -132,7 +133,7 @@ export async function reviewResourceRequest(requestIdValue, approved, reviewedBy
 
   let pvcName = null;
   if (approved) {
-    const identity = buildLabIdentity(requestDoc.username);
+    const identity = await ensureStoredLabIdentity(requestDoc.username);
     pvcName = await ensureUserHomePvc(identity, requestDoc.diskGib);
     await ResourceAllocation.findOneAndUpdate(
       { username: requestDoc.username },

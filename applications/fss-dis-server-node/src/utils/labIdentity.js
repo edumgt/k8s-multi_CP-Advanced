@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 const USERNAME_PATTERN = /^[a-z0-9._@-]+$/;
+const DNS_LABEL_PATTERN = /[^a-z0-9-]+/g;
 
 export function canonicalUsername(username) {
   const normalized = String(username || "").trim().toLowerCase();
@@ -19,15 +20,30 @@ export function buildSessionId(username) {
   return `${slug}-${digest}`;
 }
 
-export function buildLabIdentity(username) {
+export function sanitizeDnsLabel(value, fallback = "default") {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(DNS_LABEL_PATTERN, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/--+/g, "-")
+    .slice(0, 63);
+  return normalized || fallback;
+}
+
+export function buildLabIdentity(username, overrides = {}) {
   const normalized = canonicalUsername(username);
-  const sessionId = buildSessionId(normalized);
+  const sessionId = sanitizeDnsLabel(overrides.session_id || buildSessionId(normalized), buildSessionId(normalized));
+  const podName = sanitizeDnsLabel(overrides.pod_name || `lab-${sessionId}`, `lab-${sessionId}`);
+  const serviceName = sanitizeDnsLabel(overrides.service_name || podName, podName);
+  const headlessService = sanitizeDnsLabel(overrides.headless_service || "jupyter-named-pod", "jupyter-named-pod");
   return {
     username: normalized,
     session_id: sessionId,
-    pod_name: `lab-${sessionId}`,
-    service_name: `lab-${sessionId}`,
-    workspace_subpath: `users/${sessionId}`,
+    pod_name: podName,
+    service_name: serviceName,
+    headless_service: headlessService,
+    workspace_subpath: String(overrides.workspace_subpath || `users/${sessionId}`),
   };
 }
 

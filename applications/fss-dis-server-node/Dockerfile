@@ -1,24 +1,15 @@
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-ARG NPM_REGISTRY=http://192.168.56.31:8081/repository/npm-all/
-ARG NPM_AUTH_B64
-
-COPY package.json ./
-RUN if [ -n "${NPM_REGISTRY:-}" ]; then \
-      npm config set registry "${NPM_REGISTRY}"; \
-      if [ -n "${NPM_AUTH_B64:-}" ]; then \
-        registry_scope="$(printf '%s' "${NPM_REGISTRY}" | sed -e 's#^https\?://##' -e 's#/*$##')"; \
-        npm config set "//${registry_scope}/:_auth" "${NPM_AUTH_B64}"; \
-      fi; \
-    fi \
- && npm install --omit=dev --no-audit --no-fund
-
-COPY src ./src
-COPY .env.example ./.env.example
-
 ENV NODE_ENV=production
+
+# Bake the SSR server source, runtime deps, and env templates into the image
+# so it can run without an extra install/build step.
+COPY --chown=node:node . .
+
+USER node
+
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "src/server.js"]

@@ -18,18 +18,31 @@
 - 필요 없는 경우:
   - 백엔드가 `podIP:port`로 직접 프록시하고, Ingress wildcard 라우팅을 쓰지 않을 때
 
-## air-gap 빌드
-외부 인터넷 없이 빌드하려면, 베이스 이미지를 내부 레지스트리에 미리 미러해두어야 합니다.
-`Dockerfile`은 외부 기본 이미지를 두지 않으므로 `BASE_IMAGE`를 반드시 지정해야 합니다.
+## 빌드 및 푸시
 
-예시:
+Harbor 주소: `192.168.56.32` (HTTPS, 자체 서명 인증서)
+
+Harbor 서버(192.168.56.32)에서 빌드:
 ```bash
-docker build \
-  --build-arg BASE_IMAGE=10.111.111.72:80/library/node:22-alpine \
-  -t 10.111.111.72:80/app/jupyter-pod-router:0.1.0 \
-  /home/ubuntu/k8s-fss/applications/jupyter-pod-router
+# Harbor 서버에서 직접 실행
+docker build -t 192.168.56.32/library/jupyter-pod-router:latest \
+  /home/ubuntu/jupyter-pod-router-build/
 
-docker push 10.111.111.72:80/app/jupyter-pod-router:0.1.0
+echo 'Harbor12345!' | docker login 192.168.56.32 -u admin --password-stdin
+docker push 192.168.56.32/library/jupyter-pod-router:latest
+```
+
+k8s 노드 containerd 인증서 설정 (최초 1회):
+```bash
+# 각 노드에서 실행 (또는 아래 스크립트로 일괄 적용)
+sudo mkdir -p /etc/containerd/certs.d/192.168.56.32
+sudo cp server.crt /etc/containerd/certs.d/192.168.56.32/ca.crt
+sudo bash -c 'cat > /etc/containerd/certs.d/192.168.56.32/hosts.toml << EOF
+server = "https://192.168.56.32"
+[host."https://192.168.56.32"]
+  ca = "/etc/containerd/certs.d/192.168.56.32/ca.crt"
+EOF'
+sudo systemctl restart containerd
 ```
 
 ## 배포

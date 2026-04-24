@@ -1,0 +1,357 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fss-dis-server-config
+  namespace: app
+data:
+  NODE_ENV: production
+  APP_NAME: fss-dis-server-node
+  BACKEND_BASE_PATH: /fss-dis-server
+  PORT: "3000"
+  K8S_APP_NAMESPACE: app
+  K8S_USER_NAMESPACE: dis
+  LAB_GOVERNANCE_ENABLED: "true"
+  JUPYTER_IMAGE: 192.168.56.32/app/jupyter:latest
+  JUPYTER_ACCESS_MODE: ingress-path
+  JUPYTER_DYNAMIC_HOST_SUFFIX: platform.local
+  JUPYTER_DYNAMIC_SCHEME: http
+  JUPYTER_DYNAMIC_SUBDOMAIN: jupyter-named-pod
+  JUPYTER_WORKSPACE_ROOT: /workspace/user-home
+  JUPYTER_BOOTSTRAP_DIR: /opt/platform/bootstrap-workspace
+  JUPYTER_PERSONAL_PVC_NAME: ""
+  JUPYTER_PERSONAL_MOUNT_PATH: /personal
+  AUTH_TOKEN_TTL_SECONDS: "28800"
+  AUTH_SESSION_PREFIX: "fss:auth:session:"
+  JUPYTER_ROUTE_ACCESS_TTL_SECONDS: "28800"
+  JUPYTER_ROUTE_ACCESS_PREFIX: "fss:jupyter:route:"
+  JUPYTER_ROUTER_SHARED_SECRET: "change-this-jupyter-router-secret"
+  CORS_ORIGINS: "http://192.168.56.240,http://192.168.56.11,http://platform.local"
+  FRONTEND_URL: "http://platform.local"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fss-dis-server-secret
+  namespace: app
+type: Opaque
+stringData:
+  MONGO_URI: mongodb://root:root-password@172.29.41.131:27017/adw?authSource=admin
+  REDIS_URL: redis://root:root-password@172.29.41.131:6379/0
+  JUPYTER_TOKEN: platform123
+  CONTROL_PLANE_USERNAME: admin@test.com
+  CONTROL_PLANE_PASSWORD: "123456"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fss-dis-server-overrides
+  namespace: app
+data:
+  labIdentityService.js: |
+    import { config } from "../config.js";
+    import { getMongoDb } from "./db.js";
+    import { buildLabIdentity, canonicalUsername, sanitizeDnsLabel } from "../utils/labIdentity.js";
+
+    const USER_PODS_COLLECTION = "userpods";
+
+    function firstString(...values) {
+      for (const value of values) {
+        if (value == null) continue;
+        const normalized = String(value).trim();
+        if (normalized) return normalized;
+      }
+      return "";
+    }
+
+    function collection() {
+      const db = getMongoDb();
+      return db ? db.collection(USER_PODS_COLLECTION) : null;
+    }
+
+    function documentToIdentity(username, doc = {}) {
+      return buildLabIdentity(username, {
+        session_id: firstString(doc.session_id, doc.sessionId),
+        headless_service: firstString(
+          doc.headless_service,
+          doc.headlessService,
+          doc.subdomain,
+          doc.headless_name,
+          config.jupyterDynamicSubdomain,
+        ),
+        workspace_subpath: firstString(doc.workspace_subpath, doc.workspaceSubpath),
+      });
+    }
+
+    function identityToDocument(identity, extra = {}) {
+      const image = firstString(extra.image, extra.containerImage);
+      return {
+        username: identity.username,
+        userId: identity.username,
+        session_id: identity.session_id,
+        sessionId: identity.session_id,
+        pod_name: identity.pod_name,
+        podName: identity.pod_name,
+        service_name: identity.service_name,
+        serviceName: identity.service_name,
+        headless_service: identity.headless_service,
+        headlessService: identity.headless_service,
+        subdomain: identity.headless_service,
+        workspace_subpath: identity.workspace_subpath,
+        workspaceSubpath: identity.workspace_subpath,
+        namespace: config.k8sUserNamespace,
+        containerImage: image || undefined,
+        image: image || undefined,
+        source: "userpods",
+        created_at: extra.created_at || undefined,
+        updated_at: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    export async function getStoredLabIdentity(username) {
+      const normalized = canonicalUsername(username);
+      const pods = collection();
+      if (!pods) {
+        return null;
+      }
+
+      const doc = await pods.findOne({ username: normalized });
+      if (!doc) {
+        return null;
+      }
+
+      return documentToIdentity(normalized, doc);
+    }
+
+    export async function persistLabIdentity(identity, extra = {}) {
+      const pods = collection();
+      if (!pods) return identity;
+
+      const normalizedIdentity = buildLabIdentity(identity.username, {
+        session_id: identity.session_id,
+        pod_name: identity.pod_name,
+        service_name: identity.service_name,
+        headless_service: identity.headless_service || config.jupyterDynamicSubdomain,
+        workspace_subpath: identity.workspace_subpath,
+      });
+
+      const doc = identityToDocument(normalizedIdentity, extra);
+
+      await pods.updateOne(
+        { username: normalizedIdentity.username },
+        { $set: doc },
+        { upsert: true },
+      );
+
+      return normalizedIdentity;
+    }
+
+    export async function ensureStoredLabIdentity(username, extra = {}) {
+      const normalized = canonicalUsername(username);
+      const identity = await getStoredLabIdentity(normalized);
+      if (!identity) {
+        return null;
+      }
+      const merged = buildLabIdentity(normalized, {
+        session_id: identity.session_id,
+        pod_name: identity.pod_name,
+        service_name: identity.service_name,
+        headless_service: sanitizeDnsLabel(identity.headless_service || config.jupyterDynamicSubdomain, config.jupyterDynamicSubdomain),
+        workspace_subpath: identity.workspace_subpath,
+      });
+      return persistLabIdentity(merged, extra);
+    }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fss-dis-server
+  namespace: app
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fss-dis-server-k8s-access
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["nodes", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fss-dis-server-k8s-access
+subjects:
+  - kind: ServiceAccount
+    name: fss-dis-server
+    namespace: app
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fss-dis-server-k8s-access
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fss-dis-server
+  namespace: app
+  labels:
+    app.kubernetes.io/name: fss-dis-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fss-dis-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fss-dis-server
+    spec:
+      serviceAccountName: fss-dis-server
+      volumes:
+        - name: source-overrides
+          configMap:
+            name: fss-dis-server-overrides
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - k8s-worker-3
+      containers:
+        - name: server
+          image: 192.168.56.32/app/fss-dis-server-node:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: fss-dis-server-config
+            - secretRef:
+                name: fss-dis-server-secret
+          volumeMounts:
+            - name: source-overrides
+              mountPath: /app/src/services/labIdentityService.js
+              subPath: labIdentityService.js
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fss-dis-server
+  namespace: app
+spec:
+  selector:
+    app.kubernetes.io/name: fss-dis-server
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fss-dis-api
+  namespace: app
+spec:
+  selector:
+    app.kubernetes.io/name: fss-dis-server
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fss-dis-server-web
+  namespace: app
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /fss-dis-server
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
+          - path: /healthz
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
+          - path: /openapi.json
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
+          - path: /livez
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000

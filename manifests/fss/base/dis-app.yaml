@@ -49,7 +49,7 @@ data:
 
     MONGO_URI = os.getenv(
         "MONGO_URI",
-        "mongodb://root:root-password@mongo.infra.svc.cluster.local:27017/fss_dis?authSource=admin",
+        "mongodb://root:root-password@mongo.infra.svc.cluster.local:27017/adw?authSource=admin",
     )
     INTERVAL_SECONDS = max(15, int(os.getenv("METRICS_COLLECT_INTERVAL_SECONDS", "60")))
     RETENTION_DAYS = max(1, int(os.getenv("METRICS_RETENTION_DAYS", "14")))
@@ -116,7 +116,7 @@ data:
         custom = client.CustomObjectsApi()
 
         mongo = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-        db_name = MONGO_URI.rsplit("/", 1)[-1].split("?", 1)[0] or "fss_dis"
+        db_name = MONGO_URI.rsplit("/", 1)[-1].split("?", 1)[0] or "adw"
         db = mongo[db_name]
         col = db[COLLECTION_NAME]
         col.create_index([("sampled_at", ASCENDING)], expireAfterSeconds=RETENTION_DAYS * 24 * 60 * 60)
@@ -199,7 +199,7 @@ metadata:
   namespace: app
 type: Opaque
 stringData:
-  MONGO_URI: mongodb://root:root-password@mongo.infra.svc.cluster.local:27017/fss_dis?authSource=admin
+  MONGO_URI: mongodb://root:root-password@mongo.infra.svc.cluster.local:27017/adw?authSource=admin
   REDIS_URL: redis://root:root-password@redis.infra.svc.cluster.local:6379/0
   JUPYTER_TOKEN: platform123
   CONTROL_PLANE_USERNAME: admin@test.com
@@ -306,7 +306,7 @@ spec:
       serviceAccountName: fss-dis-server
       containers:
         - name: server
-          image: 192.168.56.32/app/fss-adw-server-node:latest
+          image: 192.168.56.32/app/fss-dis-server-node:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000

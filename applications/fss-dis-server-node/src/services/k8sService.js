@@ -3,18 +3,38 @@ import * as k8s from "@kubernetes/client-node";
 import { config, isDynamicRouteMode, isIngressPathMode } from "../config.js";
 import { buildSessionToken } from "../utils/labIdentity.js";
 
+let _kc = null;
 let coreApi;
+let appsApi;
+let customApi;
+
+function getKubeConfig() {
+  if (_kc) return _kc;
+  _kc = new k8s.KubeConfig();
+  if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) {
+    _kc.loadFromCluster();
+  } else {
+    _kc.loadFromDefault();
+  }
+  return _kc;
+}
 
 function kubeClient() {
   if (coreApi) return coreApi;
-  const kc = new k8s.KubeConfig();
-  if (process.env.KUBERNETES_SERVICE_HOST && process.env.KUBERNETES_SERVICE_PORT) {
-    kc.loadFromCluster();
-  } else {
-    kc.loadFromDefault();
-  }
-  coreApi = kc.makeApiClient(k8s.CoreV1Api);
+  coreApi = getKubeConfig().makeApiClient(k8s.CoreV1Api);
   return coreApi;
+}
+
+function appsClient() {
+  if (appsApi) return appsApi;
+  appsApi = getKubeConfig().makeApiClient(k8s.AppsV1Api);
+  return appsApi;
+}
+
+function customClient() {
+  if (customApi) return customApi;
+  customApi = getKubeConfig().makeApiClient(k8s.CustomObjectsApi);
+  return customApi;
 }
 
 function isNotFound(error) {
@@ -88,19 +108,19 @@ export async function readService(name) {
   }
 }
 
-async function ensureRoutedHeadlessService() {
+async function ensureRoutedHeadlessService(name = config.jupyterDynamicSubdomain) {
   const api = kubeClient();
-  const name = config.jupyterDynamicSubdomain;
-  if (!name) return;
+  const serviceName = String(name || "").trim();
+  if (!serviceName) return;
 
   try {
     await api.readNamespacedService({
-      name,
+      name: serviceName,
       namespace: config.k8sUserNamespace,
     });
     return;
   } catch (error) {
-    if (!isNotFound(error)) throw wrapK8sError(error, `reading service ${name}`);
+    if (!isNotFound(error)) throw wrapK8sError(error, `reading service ${serviceName}`);
   }
 
   try {
@@ -108,7 +128,7 @@ async function ensureRoutedHeadlessService() {
       namespace: config.k8sUserNamespace,
       body: {
         metadata: {
-          name,
+          name: serviceName,
           labels: {
             "app.kubernetes.io/component": "user-jupyter-routing",
           },
@@ -130,7 +150,7 @@ async function ensureRoutedHeadlessService() {
       },
     });
   } catch (error) {
-    throw wrapK8sError(error, `creating service ${name}`);
+    throw wrapK8sError(error, `creating service ${serviceName}`);
   }
 }
 
@@ -244,6 +264,7 @@ export function buildSessionSummary({ identity, pod, service, launchImage }) {
     namespace: config.k8sUserNamespace,
     pod_name: identity.pod_name,
     service_name: identity.service_name,
+    headless_service: identity.headless_service || config.jupyterDynamicSubdomain,
     workspace_subpath: identity.workspace_subpath,
     image: pod?.spec?.containers?.[0]?.image || launchImage,
     status,
@@ -349,7 +370,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
         restartPolicy: "Always",
         terminationGracePeriodSeconds: 15,
         hostname: routed ? podName : undefined,
-        subdomain: routed ? config.jupyterDynamicSubdomain : undefined,
+        subdomain: routed ? (identity.headless_service || config.jupyterDynamicSubdomain) : undefined,
         initContainers: [
           {
             name: "restore-workspace",
@@ -455,7 +476,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
   }
 
   if (routed) {
-    await ensureRoutedHeadlessService();
+    await ensureRoutedHeadlessService(identity.headless_service);
   }
 
   if (!routed) {
@@ -597,4 +618,297 @@ export async function readControlPlaneDashboard(namespace = "") {
     nodes,
     pods,
   };
+}
+
+// ── K8s Resource Query APIs (examples using @kubernetes/client-node) ─────────
+
+function parseCpuToMilli(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return 0;
+  if (raw.endsWith("n")) return Math.round(parseFloat(raw) / 1_000_000);
+  if (raw.endsWith("u")) return Math.round(parseFloat(raw) / 1_000);
+  if (raw.endsWith("m")) return Math.round(parseFloat(raw));
+  return Math.round(parseFloat(raw) * 1000);
+}
+
+function parseMemoryToBytes(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return 0;
+  const units = { Ki: 1024, Mi: 1024 ** 2, Gi: 1024 ** 3, Ti: 1024 ** 4, K: 1000, M: 1000 ** 2, G: 1000 ** 3 };
+  for (const [u, mul] of Object.entries(units).sort((a, b) => b[0].length - a[0].length)) {
+    if (raw.endsWith(u)) return Math.round(parseFloat(raw.slice(0, -u.length)) * mul);
+  }
+  return Math.round(parseFloat(raw));
+}
+
+export async function listK8sNamespaces() {
+  const api = kubeClient();
+  try {
+    const res = await api.listNamespace();
+    return (res.body?.items || res.items || []).map((ns) => ({
+      name: ns.metadata?.name || "",
+      status: ns.status?.phase || "Active",
+      labels: ns.metadata?.labels || {},
+      created_at: ns.metadata?.creationTimestamp || null,
+    }));
+  } catch (error) {
+    throw wrapK8sError(error, "listing namespaces");
+  }
+}
+
+export async function listK8sNodes() {
+  const api = kubeClient();
+  try {
+    const res = await api.listNode();
+    return (res.body?.items || res.items || []).map((node) => {
+      const conditions = node.status?.conditions || [];
+      const readyCondition = conditions.find((c) => c.type === "Ready");
+      const roleKeys = Object.keys(node.metadata?.labels || {}).filter((k) =>
+        k.startsWith("node-role.kubernetes.io/"),
+      );
+      const roles = roleKeys.length
+        ? roleKeys.map((k) => k.split("/")[1])
+        : [node.metadata?.labels?.["kubernetes.io/role"] || "worker"];
+      return {
+        name: node.metadata?.name || "",
+        ready: readyCondition?.status === "True",
+        roles: roles.join(","),
+        version: node.status?.nodeInfo?.kubeletVersion || "",
+        internal_ip: (node.status?.addresses || []).find((a) => a.type === "InternalIP")?.address || "",
+        os_image: node.status?.nodeInfo?.osImage || "",
+        kernel_version: node.status?.nodeInfo?.kernelVersion || "",
+        container_runtime: node.status?.nodeInfo?.containerRuntimeVersion || "",
+        allocatable: {
+          cpu: node.status?.allocatable?.cpu || "",
+          memory: node.status?.allocatable?.memory || "",
+          pods: node.status?.allocatable?.pods || "",
+        },
+        capacity: {
+          cpu: node.status?.capacity?.cpu || "",
+          memory: node.status?.capacity?.memory || "",
+          pods: node.status?.capacity?.pods || "",
+        },
+        conditions: conditions.map((c) => ({
+          type: c.type,
+          status: c.status,
+          reason: c.reason,
+          message: c.message,
+        })),
+        created_at: node.metadata?.creationTimestamp || null,
+      };
+    });
+  } catch (error) {
+    throw wrapK8sError(error, "listing nodes");
+  }
+}
+
+export async function listK8sPods(namespace = "", labelSelector = "") {
+  const api = kubeClient();
+  try {
+    const opts = labelSelector ? { labelSelector } : {};
+    const res = namespace
+      ? await api.listNamespacedPod({ namespace, ...opts })
+      : await api.listPodForAllNamespaces(opts);
+    return (res.body?.items || res.items || []).map((pod) => {
+      const statuses = pod.status?.containerStatuses || [];
+      const readyCount = statuses.filter((s) => s.ready).length;
+      return {
+        namespace: pod.metadata?.namespace || "",
+        name: pod.metadata?.name || "",
+        ready: `${readyCount}/${statuses.length}`,
+        status: pod.status?.phase || "Unknown",
+        restarts: statuses.reduce((sum, s) => sum + Number(s.restartCount || 0), 0),
+        node_name: pod.spec?.nodeName || "-",
+        pod_ip: pod.status?.podIP || null,
+        host_ip: pod.status?.hostIP || null,
+        containers: (pod.spec?.containers || []).map((c) => ({
+          name: c.name,
+          image: c.image,
+          ports: (c.ports || []).map((p) => ({ name: p.name, container_port: p.containerPort, protocol: p.protocol })),
+          resources: c.resources || {},
+        })),
+        labels: pod.metadata?.labels || {},
+        created_at: pod.metadata?.creationTimestamp || null,
+      };
+    });
+  } catch (error) {
+    throw wrapK8sError(error, `listing pods${namespace ? ` in ${namespace}` : ""}`);
+  }
+}
+
+export async function getK8sPod(namespace, name) {
+  const api = kubeClient();
+  try {
+    const res = await api.readNamespacedPod({ namespace, name });
+    return res.body || res || null;
+  } catch (error) {
+    if (isNotFound(error)) return null;
+    throw wrapK8sError(error, `reading pod ${namespace}/${name}`);
+  }
+}
+
+export async function listK8sServices(namespace = "") {
+  const api = kubeClient();
+  try {
+    const res = namespace
+      ? await api.listNamespacedService({ namespace })
+      : await api.listServiceForAllNamespaces();
+    return (res.body?.items || res.items || []).map((svc) => ({
+      namespace: svc.metadata?.namespace || "",
+      name: svc.metadata?.name || "",
+      type: svc.spec?.type || "ClusterIP",
+      cluster_ip: svc.spec?.clusterIP || "",
+      external_ip: (svc.status?.loadBalancer?.ingress || []).map((i) => i.ip || i.hostname).join(",") || null,
+      ports: (svc.spec?.ports || []).map((p) => ({
+        name: p.name || "",
+        port: p.port,
+        target_port: String(p.targetPort || ""),
+        node_port: p.nodePort || null,
+        protocol: p.protocol || "TCP",
+      })),
+      selector: svc.spec?.selector || {},
+      created_at: svc.metadata?.creationTimestamp || null,
+    }));
+  } catch (error) {
+    throw wrapK8sError(error, `listing services${namespace ? ` in ${namespace}` : ""}`);
+  }
+}
+
+export async function listK8sDeployments(namespace = "") {
+  const api = appsClient();
+  try {
+    const res = namespace
+      ? await api.listNamespacedDeployment({ namespace })
+      : await api.listDeploymentForAllNamespaces();
+    return (res.body?.items || res.items || []).map((dep) => ({
+      namespace: dep.metadata?.namespace || "",
+      name: dep.metadata?.name || "",
+      replicas: dep.spec?.replicas || 0,
+      ready_replicas: dep.status?.readyReplicas || 0,
+      available_replicas: dep.status?.availableReplicas || 0,
+      updated_replicas: dep.status?.updatedReplicas || 0,
+      image: (dep.spec?.template?.spec?.containers || []).map((c) => c.image).join(","),
+      labels: dep.metadata?.labels || {},
+      selector: dep.spec?.selector?.matchLabels || {},
+      created_at: dep.metadata?.creationTimestamp || null,
+    }));
+  } catch (error) {
+    throw wrapK8sError(error, `listing deployments${namespace ? ` in ${namespace}` : ""}`);
+  }
+}
+
+export async function listK8sPVCs(namespace = "") {
+  const api = kubeClient();
+  try {
+    const res = namespace
+      ? await api.listNamespacedPersistentVolumeClaim({ namespace })
+      : await api.listPersistentVolumeClaimForAllNamespaces();
+    return (res.body?.items || res.items || []).map((pvc) => ({
+      namespace: pvc.metadata?.namespace || "",
+      name: pvc.metadata?.name || "",
+      status: pvc.status?.phase || "Unknown",
+      volume: pvc.spec?.volumeName || "",
+      capacity: pvc.status?.capacity?.storage || "",
+      access_modes: pvc.spec?.accessModes || [],
+      storage_class: pvc.spec?.storageClassName || "",
+      created_at: pvc.metadata?.creationTimestamp || null,
+    }));
+  } catch (error) {
+    throw wrapK8sError(error, `listing PVCs${namespace ? ` in ${namespace}` : ""}`);
+  }
+}
+
+export async function listK8sEvents(namespace = "", limit = 50) {
+  const api = kubeClient();
+  try {
+    const opts = { limit };
+    const res = namespace
+      ? await api.listNamespacedEvent({ namespace, ...opts })
+      : await api.listEventForAllNamespaces(opts);
+    const items = (res.body?.items || res.items || []);
+    items.sort((a, b) => {
+      const ta = new Date(a.lastTimestamp || a.eventTime || 0).getTime();
+      const tb = new Date(b.lastTimestamp || b.eventTime || 0).getTime();
+      return tb - ta;
+    });
+    return items.slice(0, limit).map((ev) => ({
+      namespace: ev.metadata?.namespace || "",
+      name: ev.metadata?.name || "",
+      reason: ev.reason || "",
+      message: ev.message || "",
+      type: ev.type || "Normal",
+      count: ev.count || 1,
+      involved_object: {
+        kind: ev.involvedObject?.kind || "",
+        name: ev.involvedObject?.name || "",
+        namespace: ev.involvedObject?.namespace || "",
+      },
+      source: { component: ev.source?.component || "", host: ev.source?.host || "" },
+      last_timestamp: ev.lastTimestamp || ev.eventTime || null,
+    }));
+  } catch (error) {
+    throw wrapK8sError(error, `listing events${namespace ? ` in ${namespace}` : ""}`);
+  }
+}
+
+export async function listK8sNodeMetrics() {
+  const api = customClient();
+  try {
+    const res = await api.listClusterCustomObject({
+      group: "metrics.k8s.io",
+      version: "v1beta1",
+      plural: "nodes",
+    });
+    const items = (res.body?.items || res.items || []);
+    return items.map((item) => ({
+      name: item.metadata?.name || "",
+      timestamp: item.timestamp || item.metadata?.creationTimestamp || null,
+      window: item.window || "",
+      cpu: item.usage?.cpu || "",
+      memory: item.usage?.memory || "",
+      cpu_milli: parseCpuToMilli(item.usage?.cpu),
+      memory_bytes: parseMemoryToBytes(item.usage?.memory),
+    }));
+  } catch (error) {
+    throw wrapK8sError(error, "listing node metrics");
+  }
+}
+
+export async function listK8sPodMetrics(namespace = "") {
+  const api = customClient();
+  try {
+    const res = namespace
+      ? await api.listNamespacedCustomObject({
+          group: "metrics.k8s.io",
+          version: "v1beta1",
+          namespace,
+          plural: "pods",
+        })
+      : await api.listClusterCustomObject({
+          group: "metrics.k8s.io",
+          version: "v1beta1",
+          plural: "pods",
+        });
+    const items = (res.body?.items || res.items || []);
+    return items.map((item) => {
+      const containers = (item.containers || []).map((c) => ({
+        name: c.name || "",
+        cpu: c.usage?.cpu || "",
+        memory: c.usage?.memory || "",
+        cpu_milli: parseCpuToMilli(c.usage?.cpu),
+        memory_bytes: parseMemoryToBytes(c.usage?.memory),
+      }));
+      return {
+        namespace: item.metadata?.namespace || "",
+        name: item.metadata?.name || "",
+        timestamp: item.timestamp || item.metadata?.creationTimestamp || null,
+        window: item.window || "",
+        cpu_milli: containers.reduce((s, c) => s + c.cpu_milli, 0),
+        memory_bytes: containers.reduce((s, c) => s + c.memory_bytes, 0),
+        containers,
+      };
+    });
+  } catch (error) {
+    throw wrapK8sError(error, `listing pod metrics${namespace ? ` in ${namespace}` : ""}`);
+  }
 }

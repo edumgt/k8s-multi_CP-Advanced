@@ -1,5 +1,4 @@
-ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM node:22-alpine
 
 WORKDIR /app
 COPY server.js /app/server.js
