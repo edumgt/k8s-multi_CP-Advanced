@@ -9,7 +9,11 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js",
+    "migrate": "migrate-mongo up",
+    "migrate:down": "migrate-mongo down",
+    "migrate:status": "migrate-mongo status",
+    "migrate:create": "migrate-mongo create"
   },
   "dependencies": {
     "@kubernetes/client-node": "^1.4.0",
@@ -18,6 +22,7 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "ioredis": "^5.8.1",
+    "migrate-mongo": "^14.0.7",
     "mongoose": "^8.19.2",
     "socket.io": "^4.8.1",
     "swagger-ui-express": "^5.0.1",

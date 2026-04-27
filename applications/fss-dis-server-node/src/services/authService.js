@@ -12,6 +12,12 @@ import { buildLabIdentity } from "../utils/labIdentity.js";
 const memorySessions = new Map();
 const memoryJupyterRouteAccess = new Map();
 
+function invalidCredentialsError() {
+  const error = new Error("Invalid username or password.");
+  error.statusCode = 401;
+  return error;
+}
+
 function sessionKey(token) {
   return `${config.authSessionPrefix}${token}`;
 }
@@ -30,6 +36,7 @@ export async function verifyPassword(password, passwordHash) {
 
 export async function ensureDefaultUsers() {
   const defaults = [
+    { username: "test-admin", password: "123456", role: "admin", displayName: "ADMIN" },
     { username: "admin@test.com", password: "123456", role: "admin", displayName: "Platform Admin" },
     { username: "test-user", password: "test-password", role: "user", displayName: "ADW Test User" },
   ];
@@ -92,11 +99,11 @@ export async function findUser(username) {
 export async function authenticate(username, password) {
   const user = await findUser(username);
   if (!user) {
-    throw new Error("Invalid username or password.");
+    throw invalidCredentialsError();
   }
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) {
-    throw new Error("Invalid username or password.");
+    throw invalidCredentialsError();
   }
   return user;
 }

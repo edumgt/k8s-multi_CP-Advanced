@@ -77,6 +77,27 @@ const io = new SocketIOServer(server, {
   },
 });
 
+function isAllowedCorsOrigin(origin, req) {
+  if (!origin || config.corsOrigins.length === 0 || config.corsOrigins.includes(origin)) {
+    return true;
+  }
+
+  try {
+    const originUrl = new URL(origin);
+    const host = String(req.headers.host || "");
+    const forwardedHost = String(req.headers["x-forwarded-host"] || "");
+    const requestHosts = [host, forwardedHost].filter(Boolean);
+
+    if (requestHosts.includes(originUrl.host)) {
+      return true;
+    }
+
+    return ["localhost", "127.0.0.1", "::1"].includes(originUrl.hostname);
+  } catch {
+    return false;
+  }
+}
+
 app.use((req, _res, next) => {
   if (config.backendBasePath === "/") {
     next();
@@ -92,18 +113,18 @@ app.use((req, _res, next) => {
   next();
 });
 
-app.use(
+app.use((req, res, next) => {
   cors({
     origin(origin, callback) {
-      if (!origin || config.corsOrigins.length === 0 || config.corsOrigins.includes(origin)) {
+      if (isAllowedCorsOrigin(origin, req)) {
         callback(null, true);
       } else {
         callback(new Error("CORS origin is not allowed"));
       }
     },
     credentials: true,
-  }),
-);
+  })(req, res, next);
+});
 app.use(express.json({ limit: "2mb" }));
 app.get("/openapi.json", (_req, res) => {
   res.json(swaggerSpec);
@@ -125,6 +146,8 @@ function initializeSwaggerUi() {
     spec: ${specJson},
     dom_id: "#swagger-ui",
     deepLinking: true,
+    docExpansion: "none",
+    defaultModelsExpandDepth: -1,
     persistAuthorization: true,
     presets: [SwaggerUIBundle.presets.apis, window.SwaggerUIStandalonePreset].filter(Boolean),
     plugins: [SwaggerUIBundle.plugins.DownloadUrl],

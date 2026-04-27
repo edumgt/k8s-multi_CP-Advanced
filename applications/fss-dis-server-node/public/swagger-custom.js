@@ -82,6 +82,18 @@
     return status;
   }
 
+  function setText(node, text) {
+    if (node && node.textContent !== text) {
+      node.textContent = text;
+    }
+  }
+
+  function setDisabled(button, disabled) {
+    if (button && button.disabled !== disabled) {
+      button.disabled = disabled;
+    }
+  }
+
   function ensureBar(root) {
     let bar = root.querySelector(`.${BAR_CLASS}`);
     if (!bar) {
@@ -120,13 +132,13 @@
   async function ensurePhysicalPod(username, statusEl, buttonEl, refresh) {
     const authHeader = getAuthorizedBearer();
     if (!authHeader) {
-      statusEl.textContent = "Authorize 에 Bearer 토큰을 먼저 넣어주세요.";
+      setText(statusEl, "Authorize 에 Bearer 토큰을 먼저 넣어주세요.");
       return;
     }
 
     const basePath = getBackendBasePath();
-    buttonEl.disabled = true;
-    statusEl.textContent = "물리 Pod 생성 요청 중...";
+    setDisabled(buttonEl, true);
+    setText(statusEl, "물리 Pod 생성 요청 중...");
 
     try {
       const response = await window.fetch(`${basePath}/api/jupyter/sessions`, {
@@ -144,27 +156,27 @@
         throw new Error(payload?.detail || `Request failed with ${response.status}`);
       }
 
-      statusEl.textContent = `${username} 물리 Pod 실행 요청을 보냈습니다.`;
+      setText(statusEl, `${username} 물리 Pod 실행 요청을 보냈습니다.`);
       if (typeof refresh === "function") {
         window.setTimeout(refresh, 500);
       }
     } catch (error) {
-      statusEl.textContent = error instanceof Error ? error.message : "Physical pod run failed.";
+      setText(statusEl, error instanceof Error ? error.message : "Physical pod run failed.");
     } finally {
-      buttonEl.disabled = false;
+      setDisabled(buttonEl, false);
     }
   }
 
   async function openJupyterForUsername(username, statusEl, buttonEl) {
     const authHeader = getAuthorizedBearer();
     if (!authHeader) {
-      statusEl.textContent = "Authorize 에 Bearer 토큰을 먼저 넣어주세요.";
+      setText(statusEl, "Authorize 에 Bearer 토큰을 먼저 넣어주세요.");
       return;
     }
 
     const basePath = getBackendBasePath();
-    buttonEl.disabled = true;
-    statusEl.textContent = "Jupyter URL 확인 중...";
+    setDisabled(buttonEl, true);
+    setText(statusEl, "Jupyter URL 확인 중...");
 
     try {
       const response = await window.fetch(
@@ -186,11 +198,11 @@
       }
 
       window.open(payload.redirect_url, "_blank", "noopener,noreferrer");
-      statusEl.textContent = `${username} Jupyter를 새 탭에서 열었습니다.`;
+      setText(statusEl, `${username} Jupyter를 새 탭에서 열었습니다.`);
     } catch (error) {
-      statusEl.textContent = error instanceof Error ? error.message : "Jupyter open failed.";
+      setText(statusEl, error instanceof Error ? error.message : "Jupyter open failed.");
     } finally {
-      buttonEl.disabled = false;
+      setDisabled(buttonEl, false);
     }
   }
 
@@ -203,35 +215,49 @@
     const executeButton = root.querySelector(".execute");
 
     if (!username) {
-      runButton.disabled = true;
-      openButton.disabled = true;
-      status.textContent = "먼저 Execute로 userpods를 조회하세요.";
+      setDisabled(runButton, true);
+      setDisabled(openButton, true);
+      setText(status, "먼저 Execute로 userpods를 조회하세요.");
       runButton.onclick = null;
       openButton.onclick = null;
       return;
     }
 
     const refresh = () => executeButton?.click();
-    runButton.disabled = false;
-    openButton.disabled = false;
-    status.textContent = `${username} 기준으로 물리 Pod 실행 또는 Jupyter 열기가 가능합니다.`;
+    setDisabled(runButton, false);
+    setDisabled(openButton, false);
+    setText(status, `${username} 기준으로 물리 Pod 실행 또는 Jupyter 열기가 가능합니다.`);
     runButton.onclick = () => ensurePhysicalPod(username, status, runButton, refresh);
     openButton.onclick = () => openJupyterForUsername(username, status, openButton);
   }
 
   function scan() {
-    const blocks = document.querySelectorAll(".opblock");
-    for (const block of blocks) {
-      const pathNode = block.querySelector(".opblock-summary-path");
-      if (!pathNode) continue;
+    const pathNodes = document.querySelectorAll(".opblock-summary-path");
+    for (const pathNode of pathNodes) {
       if ((pathNode.textContent || "").trim() !== TARGET_PATH) continue;
-      refreshBlock(block);
+      const block = pathNode.closest(".opblock");
+      if (block) refreshBlock(block);
+      return;
     }
   }
 
+  let scanScheduled = false;
+
+  function scheduleScan() {
+    if (scanScheduled) return;
+    scanScheduled = true;
+    window.requestAnimationFrame(() => {
+      scanScheduled = false;
+      scan();
+    });
+  }
+
   window.addEventListener("load", () => {
-    scan();
-    const observer = new MutationObserver(() => scan());
-    observer.observe(document.body, { childList: true, subtree: true });
+    scheduleScan();
+    const observer = new MutationObserver(scheduleScan);
+    observer.observe(document.getElementById("swagger-ui") || document.body, {
+      childList: true,
+      subtree: true,
+    });
   });
 })();
