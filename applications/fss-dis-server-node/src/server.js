@@ -47,7 +47,7 @@ import {
   resolveJupyterRouteSession,
 } from "./services/sessionService.js";
 import { buildAdminOverview, buildUserUsage } from "./services/usageService.js";
-import { readControlPlaneDashboard } from "./services/k8sService.js";
+import { readControlPlaneDashboard, ensureWorkspacePvAndPvc } from "./services/k8sService.js";
 import { canonicalUsername } from "./utils/labIdentity.js";
 import { toDemoUserInfo } from "./utils/formatters.js";
 
@@ -103,20 +103,15 @@ app.get("/docs/swagger-ui-init.js", (_req, res) => {
   const specJson = JSON.stringify(swaggerSpec);
   res.type("application/javascript").send(`
 window.onload = function () {
-  var options = { swaggerDoc: ${specJson}, customOptions: { persistAuthorization: true } };
-  var url = window.location.search.match(/url=([^&]+)/);
-  url = url && url.length > 1 ? decodeURIComponent(url[1]) : window.location.origin;
-  var swaggerOptions = {
-    spec: options.swaggerDoc,
-    url: options.swaggerUrl || url,
+  window.ui = SwaggerUIBundle({
+    spec: ${specJson},
     dom_id: "#swagger-ui",
     deepLinking: true,
+    persistAuthorization: true,
     presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
     plugins: [SwaggerUIBundle.plugins.DownloadUrl],
     layout: "StandaloneLayout",
-  };
-  for (var k in (options.customOptions || {})) { swaggerOptions[k] = options.customOptions[k]; }
-  window.ui = SwaggerUIBundle(swaggerOptions);
+  });
 };
 `);
 });
@@ -705,6 +700,9 @@ async function bootstrap() {
   await connectRedis().catch(() => null);
   await ensureDefaultUsers();
   await ensureDefaultEnvironment();
+  ensureWorkspacePvAndPvc().catch((err) =>
+    console.error("[bootstrap] workspace PV/PVC ensure failed:", err.message),
+  );
 
   server.listen(config.port, () => {
     // eslint-disable-next-line no-console

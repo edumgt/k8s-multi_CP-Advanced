@@ -4,9 +4,11 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Bake the SSR server source, runtime deps, and env templates into the image
-# so it can run without an extra install/build step.
-COPY --chown=node:node . .
+COPY --chown=node:node package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+COPY --chown=node:node src ./src
+COPY --chown=node:node public ./public
 
 USER node
 

@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import * as k8s from "@kubernetes/client-node";
 
 import { config, isDynamicRouteMode, isIngressPathMode } from "../config.js";
@@ -302,6 +304,101 @@ function podLaunchImage(pod) {
   return String(pod?.spec?.containers?.[0]?.image || "").trim();
 }
 
+function decryptEnvBlob(encryptedBase64, keyHex) {
+  const raw = Buffer.from(encryptedBase64, "base64");
+  const iv = raw.subarray(0, 12);
+  const tag = raw.subarray(12, 28);
+  const ciphertext = raw.subarray(28);
+  const key = Buffer.from(keyHex, "hex");
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+}
+
+async function ensureJupyterEnvSecret(identity) {
+  const keyHex = String(config.jupyterEnvEncryptKey || "").trim();
+  const encryptedBlob = String(config.jupyterExtraEnvEncrypted || "").trim();
+  if (!keyHex || !encryptedBlob) return null;
+
+  let extraEnv = {};
+  try {
+    const plainJson = decryptEnvBlob(encryptedBlob, keyHex);
+    extraEnv = JSON.parse(plainJson);
+  } catch {
+    console.error("[k8s] Failed to decrypt JUPYTER_EXTRA_ENV_ENCRYPTED — skipping env secret");
+    return null;
+  }
+
+  const envContent = Object.entries(extraEnv)
+    .map(([k, v]) => `${k}=${v}`)
+    .join("\n") + "\n";
+
+  const secretName = `jupyter-env-${identity.session_id}`.slice(0, 63);
+  const api = kubeClient();
+  const body = {
+    metadata: { name: secretName, labels: { "app.kubernetes.io/component": "jupyter-env" } },
+    data: { "env.txt": Buffer.from(envContent).toString("base64") },
+  };
+
+  try {
+    await api.readNamespacedSecret({ namespace: config.k8sUserNamespace, name: secretName });
+    await api.replaceNamespacedSecret({ namespace: config.k8sUserNamespace, name: secretName, body });
+  } catch (err) {
+    if (!isNotFound(err)) throw wrapK8sError(err, `managing env secret ${secretName}`);
+    await api.createNamespacedSecret({ namespace: config.k8sUserNamespace, body })
+      .catch((e) => { throw wrapK8sError(e, `creating env secret ${secretName}`); });
+  }
+  return secretName;
+}
+
+export async function ensureWorkspacePvAndPvc() {
+  const nfsServer = String(config.jupyterWorkspaceNfsServer || "").trim();
+  const nfsPath = String(config.jupyterWorkspaceNfsPath || "").trim();
+  if (!nfsServer || !nfsPath) return;
+
+  const api = kubeClient();
+  const pvName = config.jupyterWorkspacePvName;
+  const pvcName = config.jupyterWorkspacePvcName;
+  const storage = `${Math.max(1, config.jupyterWorkspaceDiskGi)}Gi`;
+
+  try {
+    await api.readPersistentVolume({ name: pvName });
+  } catch (err) {
+    if (!isNotFound(err)) throw wrapK8sError(err, `reading PV ${pvName}`);
+    await api.createPersistentVolume({
+      body: {
+        metadata: { name: pvName, labels: { "app.kubernetes.io/component": "jupyter-workspace" } },
+        spec: {
+          capacity: { storage },
+          accessModes: ["ReadWriteMany"],
+          persistentVolumeReclaimPolicy: "Retain",
+          storageClassName: "",
+          nfs: { server: nfsServer, path: nfsPath },
+        },
+      },
+    }).catch((e) => { throw wrapK8sError(e, `creating PV ${pvName}`); });
+  }
+
+  try {
+    await api.readNamespacedPersistentVolumeClaim({ namespace: config.k8sUserNamespace, name: pvcName });
+  } catch (err) {
+    if (!isNotFound(err)) throw wrapK8sError(err, `reading PVC ${pvcName}`);
+    await api.createNamespacedPersistentVolumeClaim({
+      namespace: config.k8sUserNamespace,
+      body: {
+        metadata: { name: pvcName, labels: { "app.kubernetes.io/component": "jupyter-workspace" } },
+        spec: {
+          accessModes: ["ReadWriteMany"],
+          resources: { requests: { storage } },
+          storageClassName: "",
+          volumeName: pvName,
+        },
+      },
+    }).catch((e) => { throw wrapK8sError(e, `creating PVC ${pvcName}`); });
+  }
+  console.log(`[k8s] workspace PV/PVC ensured: ${pvName} / ${pvcName}`);
+}
+
 export async function ensurePersonalPvAndPvc(identity) {
   const nfsServer = String(config.jupyterPersonalNfsServer || "").trim();
   const nfsBasePath = String(config.jupyterPersonalNfsBasePath || "").trim();
@@ -459,6 +556,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
   const podName = identity.pod_name;
   await ensurePersonalPvAndPvc(identity);
   const personalStorage = personalVolumeMounts(identity);
+  const envSecretName = await ensureJupyterEnvSecret(identity);
 
   let pod = await readPod(podName);
   const desiredImage = String(launchProfile.image || "").trim();
@@ -568,6 +666,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
                   : undefined,
               },
               ...personalStorage.mounts,
+              ...(envSecretName ? [{ name: "jupyter-env", mountPath: config.jupyterEnvFilePath, subPath: "env.txt", readOnly: true }] : []),
             ],
             readinessProbe: {
               httpGet: { path: probePath, port: 8888 },
@@ -593,6 +692,7 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
             },
           },
           ...personalStorage.volumes,
+          ...(envSecretName ? [{ name: "jupyter-env", secret: { secretName: envSecretName } }] : []),
         ],
       },
     };

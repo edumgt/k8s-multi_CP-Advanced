@@ -141,7 +141,7 @@ export async function ensureLabSession(username) {
   } else {
     launchProfilePayload = {
       image: launchImage,
-      pvc_name: "jupyter-workspace",
+      pvc_name: config.jupyterWorkspacePvcName,
       use_workspace_subpath: true,
       cpu_request: "100m",
       cpu_limit: "1000m",

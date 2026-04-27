@@ -16,15 +16,27 @@ data:
   JUPYTER_DYNAMIC_HOST_SUFFIX: platform.local
   JUPYTER_DYNAMIC_SCHEME: http
   JUPYTER_DYNAMIC_SUBDOMAIN: jupyter-named-pod
+  JUPYTER_PUBLIC_BASE_URL: http://192.168.56.240
   JUPYTER_WORKSPACE_ROOT: /workspace/user-home
   JUPYTER_BOOTSTRAP_DIR: /opt/platform/bootstrap-workspace
-  JUPYTER_PERSONAL_PVC_NAME: ""
-  JUPYTER_PERSONAL_MOUNT_PATH: /personal
+  JUPYTER_USER_PVC_STORAGE_CLASS: ""
+  # 공유 workspace PV/PVC (서버 시작 시 자동 생성)
+  JUPYTER_WORKSPACE_NFS_SERVER: "192.168.56.20"
+  JUPYTER_WORKSPACE_NFS_PATH: /export/nfs
+  JUPYTER_WORKSPACE_DISK_GI: "10"
+  JUPYTER_WORKSPACE_PV_NAME: nfs-jupyter-workspace
+  JUPYTER_WORKSPACE_PVC_NAME: jupyter-workspace
+  # 사용자별 personal 스토리지 (사용자 등록 시 자동 생성)
+  JUPYTER_PERSONAL_MOUNT_PATH: /workspace/user-home/personal
+  JUPYTER_PERSONAL_NFS_SERVER: "192.168.56.20"
+  JUPYTER_PERSONAL_NFS_BASE_PATH: /export/nfs/personal
+  JUPYTER_PERSONAL_DISK_GI: "5"
+  JUPYTER_PERSONAL_INIT_IMAGE: ""
+  JUPYTER_ENV_FILE_PATH: /workspace/user-home/env.txt
   AUTH_TOKEN_TTL_SECONDS: "28800"
   AUTH_SESSION_PREFIX: "fss:auth:session:"
   JUPYTER_ROUTE_ACCESS_TTL_SECONDS: "28800"
   JUPYTER_ROUTE_ACCESS_PREFIX: "fss:jupyter:route:"
-  JUPYTER_ROUTER_SHARED_SECRET: "change-this-jupyter-router-secret"
   CORS_ORIGINS: "http://192.168.56.240,http://192.168.56.11,http://platform.local"
   FRONTEND_URL: "http://platform.local"
 ---
@@ -38,8 +50,12 @@ stringData:
   MONGO_URI: mongodb://root:root-password@172.29.41.131:27017/adw?authSource=admin
   REDIS_URL: redis://root:root-password@172.29.41.131:6379/0
   JUPYTER_TOKEN: platform123
+  JUPYTER_ROUTER_SHARED_SECRET: change-this-jupyter-router-secret
   CONTROL_PLANE_USERNAME: admin@test.com
   CONTROL_PLANE_PASSWORD: "123456"
+  # Jupyter 내부 env.txt 암호화 키 (node scripts/jupyter-env-encrypt.mjs --keygen 으로 생성)
+  JUPYTER_ENV_ENCRYPT_KEY: ""
+  JUPYTER_EXTRA_ENV_ENCRYPTED: ""
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -177,11 +193,20 @@ rules:
     resources: ["pods", "services", "persistentvolumeclaims"]
     verbs: ["get", "list", "watch", "create", "delete"]
   - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  - apiGroups: [""]
     resources: ["nodes", "namespaces"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch", "create", "delete"]
   - apiGroups: ["metrics.k8s.io"]
     resources: ["nodes", "pods"]
     verbs: ["get", "list", "watch"]

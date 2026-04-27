@@ -65,6 +65,16 @@ export const config = {
   jupyterWorkspaceRoot: process.env.JUPYTER_WORKSPACE_ROOT || "/workspace/user-home",
   jupyterBootstrapDir: process.env.JUPYTER_BOOTSTRAP_DIR || "/opt/platform/bootstrap-workspace",
   jupyterUserPvcStorageClass: process.env.JUPYTER_USER_PVC_STORAGE_CLASS || "",
+  jupyterWorkspacePvName: process.env.JUPYTER_WORKSPACE_PV_NAME || "nfs-jupyter-workspace",
+  jupyterWorkspacePvcName: process.env.JUPYTER_WORKSPACE_PVC_NAME || "jupyter-workspace",
+  jupyterWorkspaceNfsServer: process.env.JUPYTER_WORKSPACE_NFS_SERVER || "",
+  jupyterWorkspaceNfsPath: process.env.JUPYTER_WORKSPACE_NFS_PATH || "",
+  jupyterWorkspaceDiskGi: parseNumber(process.env.JUPYTER_WORKSPACE_DISK_GI, 10),
+
+  jupyterEnvEncryptKey: process.env.JUPYTER_ENV_ENCRYPT_KEY || "",
+  jupyterExtraEnvEncrypted: process.env.JUPYTER_EXTRA_ENV_ENCRYPTED || "",
+  jupyterEnvFilePath: process.env.JUPYTER_ENV_FILE_PATH || "/workspace/user-home/env.txt",
+
   jupyterPersonalMountPath: process.env.JUPYTER_PERSONAL_MOUNT_PATH || "/personal",
   jupyterPersonalNfsServer: process.env.JUPYTER_PERSONAL_NFS_SERVER || "",
   jupyterPersonalNfsBasePath: process.env.JUPYTER_PERSONAL_NFS_BASE_PATH || "",
