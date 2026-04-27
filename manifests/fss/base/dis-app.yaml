@@ -442,6 +442,20 @@ spec:
                 name: fss-dis-server
                 port:
                   number: 3000
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
+          - path: /openapi.json
+            pathType: Prefix
+            backend:
+              service:
+                name: fss-dis-server
+                port:
+                  number: 3000
           - path: /livez
             pathType: Prefix
             backend:

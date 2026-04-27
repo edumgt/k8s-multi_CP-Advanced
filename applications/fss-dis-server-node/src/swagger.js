@@ -1011,7 +1011,7 @@ export const swaggerSpec = {
     "/api/k8s/namespaces": {
       get: {
         tags: ["K8s Resources"],
-        summary: "List all namespaces",
+        summary: "List all namespaces (admin)",
         security: [{ bearerAuth: [] }],
         responses: {
           200: {
@@ -1044,7 +1044,7 @@ export const swaggerSpec = {
     "/api/k8s/nodes": {
       get: {
         tags: ["K8s Resources"],
-        summary: "List all nodes with conditions and resource info",
+        summary: "List all nodes with conditions and resource info (admin)",
         security: [{ bearerAuth: [] }],
         responses: {
           200: {
@@ -1066,7 +1066,7 @@ export const swaggerSpec = {
     "/api/k8s/pods": {
       get: {
         tags: ["K8s Resources"],
-        summary: "List pods (optionally filter by namespace)",
+        summary: "List pods (optionally filter by namespace, admin)",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -1104,7 +1104,7 @@ export const swaggerSpec = {
     "/api/k8s/pods/{namespace}/{name}": {
       get: {
         tags: ["K8s Resources"],
-        summary: "Get a specific pod by namespace and name",
+        summary: "Get a specific pod by namespace and name (admin)",
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: "namespace", in: "path", required: true, schema: { type: "string" }, example: "dis" },
@@ -1119,7 +1119,7 @@ export const swaggerSpec = {
     "/api/k8s/services": {
       get: {
         tags: ["K8s Resources"],
-        summary: "List services (optionally filter by namespace)",
+        summary: "List services (optionally filter by namespace, admin)",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -1149,7 +1149,7 @@ export const swaggerSpec = {
     "/api/k8s/deployments": {
       get: {
         tags: ["K8s Resources"],
-        summary: "List deployments (optionally filter by namespace)",
+        summary: "List deployments (optionally filter by namespace, admin)",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -1179,7 +1179,7 @@ export const swaggerSpec = {
     "/api/k8s/pvcs": {
       get: {
         tags: ["K8s Resources"],
-        summary: "List PersistentVolumeClaims (optionally filter by namespace)",
+        summary: "List PersistentVolumeClaims (optionally filter by namespace, admin)",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -1209,7 +1209,7 @@ export const swaggerSpec = {
     "/api/k8s/events": {
       get: {
         tags: ["K8s Resources"],
-        summary: "List recent events (optionally filter by namespace)",
+        summary: "List recent events (optionally filter by namespace, admin)",
         security: [{ bearerAuth: [] }],
         parameters: [
           {
@@ -1244,7 +1244,7 @@ export const swaggerSpec = {
     "/api/k8s/metrics/nodes": {
       get: {
         tags: ["K8s Resources"],
-        summary: "Live node CPU/memory usage via metrics-server (metrics.k8s.io)",
+        summary: "Live node CPU/memory usage via metrics-server (metrics.k8s.io, admin)",
         security: [{ bearerAuth: [] }],
         responses: {
           200: {
@@ -1267,7 +1267,7 @@ export const swaggerSpec = {
     "/api/k8s/metrics/pods": {
       get: {
         tags: ["K8s Resources"],
-        summary: "Live pod CPU/memory usage via metrics-server (metrics.k8s.io)",
+        summary: "Live pod CPU/memory usage via metrics-server (metrics.k8s.io, admin)",
         security: [{ bearerAuth: [] }],
         parameters: [
           {

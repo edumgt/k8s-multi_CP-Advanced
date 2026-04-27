@@ -47,7 +47,20 @@ import {
   resolveJupyterRouteSession,
 } from "./services/sessionService.js";
 import { buildAdminOverview, buildUserUsage } from "./services/usageService.js";
-import { readControlPlaneDashboard, ensureWorkspacePvAndPvc } from "./services/k8sService.js";
+import {
+  ensureWorkspacePvAndPvc,
+  getK8sPod,
+  listK8sDeployments,
+  listK8sEvents,
+  listK8sNamespaces,
+  listK8sNodeMetrics,
+  listK8sNodes,
+  listK8sPodMetrics,
+  listK8sPods,
+  listK8sPVCs,
+  listK8sServices,
+  readControlPlaneDashboard,
+} from "./services/k8sService.js";
 import { canonicalUsername } from "./utils/labIdentity.js";
 import { toDemoUserInfo } from "./utils/formatters.js";
 
@@ -102,21 +115,35 @@ app.get("/docs/swagger-custom.js", (_req, res) => {
 app.get("/docs/swagger-ui-init.js", (_req, res) => {
   const specJson = JSON.stringify(swaggerSpec);
   res.type("application/javascript").send(`
-window.onload = function () {
+function initializeSwaggerUi() {
+  if (!window.SwaggerUIBundle) {
+    console.error("SwaggerUIBundle is not loaded.");
+    return;
+  }
+
   window.ui = SwaggerUIBundle({
     spec: ${specJson},
     dom_id: "#swagger-ui",
     deepLinking: true,
     persistAuthorization: true,
-    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+    presets: [SwaggerUIBundle.presets.apis, window.SwaggerUIStandalonePreset].filter(Boolean),
     plugins: [SwaggerUIBundle.plugins.DownloadUrl],
     layout: "StandaloneLayout",
   });
-};
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeSwaggerUi, { once: true });
+} else {
+  initializeSwaggerUi();
+}
 `);
 });
 app.use("/docs", express.static(swaggerUiDistPath, { index: false }));
 app.use("/docs", (_req, res) => {
+  const docsBaseUrl = config.backendBasePath === "/"
+    ? "/docs"
+    : `${config.backendBasePath}/docs`;
   const customJsUrl = config.backendBasePath === "/"
     ? "/docs/swagger-custom.js"
     : `${config.backendBasePath}/docs/swagger-custom.js`;
@@ -125,7 +152,7 @@ app.use("/docs", (_req, res) => {
 <head>
   <meta charset="UTF-8">
   <title>Swagger UI</title>
-  <link rel="stylesheet" type="text/css" href="./swagger-ui.css">
+  <link rel="stylesheet" type="text/css" href="${docsBaseUrl}/swagger-ui.css">
   <style>
     html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
     *, *:before, *:after { box-sizing: inherit; }
@@ -135,9 +162,9 @@ app.use("/docs", (_req, res) => {
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="./swagger-ui-bundle.js"></script>
-  <script src="./swagger-ui-standalone-preset.js"></script>
-  <script src="./swagger-ui-init.js"></script>
+  <script src="${docsBaseUrl}/swagger-ui-bundle.js"></script>
+  <script src="${docsBaseUrl}/swagger-ui-standalone-preset.js"></script>
+  <script src="${docsBaseUrl}/swagger-ui-init.js"></script>
   <script src="${customJsUrl}"></script>
 </body>
 </html>`);
@@ -642,6 +669,121 @@ app.get(
     const namespace = String(req.query.namespace || "").trim();
     const dashboard = await readControlPlaneDashboard(namespace);
     res.json(dashboard);
+  }),
+);
+
+app.get(
+  "/api/k8s/namespaces",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const items = await listK8sNamespaces();
+    res.json({ items });
+  }),
+);
+
+app.get(
+  "/api/k8s/nodes",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const items = await listK8sNodes();
+    res.json({ items });
+  }),
+);
+
+app.get(
+  "/api/k8s/pods",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const namespace = String(req.query.namespace || "").trim();
+    const labelSelector = String(req.query.label || "").trim();
+    const items = await listK8sPods(namespace, labelSelector);
+    res.json({
+      namespace: namespace || null,
+      label: labelSelector || null,
+      items,
+    });
+  }),
+);
+
+app.get(
+  "/api/k8s/pods/:namespace/:name",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const pod = await getK8sPod(req.params.namespace, req.params.name);
+    if (!pod) {
+      return res.status(404).json({ detail: "Pod not found." });
+    }
+    return res.json(pod);
+  }),
+);
+
+app.get(
+  "/api/k8s/services",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const namespace = String(req.query.namespace || "").trim();
+    const items = await listK8sServices(namespace);
+    res.json({ namespace: namespace || null, items });
+  }),
+);
+
+app.get(
+  "/api/k8s/deployments",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const namespace = String(req.query.namespace || "").trim();
+    const items = await listK8sDeployments(namespace);
+    res.json({ namespace: namespace || null, items });
+  }),
+);
+
+app.get(
+  "/api/k8s/pvcs",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const namespace = String(req.query.namespace || "").trim();
+    const items = await listK8sPVCs(namespace);
+    res.json({ namespace: namespace || null, items });
+  }),
+);
+
+app.get(
+  "/api/k8s/events",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const namespace = String(req.query.namespace || "").trim();
+    const limit = Math.max(1, Math.min(200, Number(req.query.limit || 50)));
+    const items = await listK8sEvents(namespace, limit);
+    res.json({ namespace: namespace || null, limit, items });
+  }),
+);
+
+app.get(
+  "/api/k8s/metrics/nodes",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (_req, res) => {
+    const items = await listK8sNodeMetrics();
+    res.json({ items });
+  }),
+);
+
+app.get(
+  "/api/k8s/metrics/pods",
+  requireAuth,
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const namespace = String(req.query.namespace || "").trim();
+    const items = await listK8sPodMetrics(namespace);
+    res.json({ namespace: namespace || null, items });
   }),
 );
 
