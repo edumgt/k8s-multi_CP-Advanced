@@ -10,4 +10,4 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   nfs:
     server: 192.168.56.20
-    path: /nfs
+    path: /export/nfs

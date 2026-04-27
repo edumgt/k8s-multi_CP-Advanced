@@ -17,4 +17,5 @@ exec jupyter lab \
   --ServerApp.base_url="${BASE_URL}" \
   --ServerApp.token="${JUPYTER_TOKEN:-platform123}" \
   --ServerApp.allow_origin="*" \
-  --ServerApp.root_dir="${ROOT_DIR}"
+  --ServerApp.root_dir="${ROOT_DIR}" \
+  --ServerApp.default_url="${BASE_URL}/lab/tree/personal"

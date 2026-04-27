@@ -1,11 +1,12 @@
 import * as k8s from "@kubernetes/client-node";
 
 import { config, isDynamicRouteMode, isIngressPathMode } from "../config.js";
-import { buildSessionToken } from "../utils/labIdentity.js";
+import { buildLabIdentity, buildSessionToken } from "../utils/labIdentity.js";
 
 let _kc = null;
 let coreApi;
 let appsApi;
+let batchApi;
 let customApi;
 
 function getKubeConfig() {
@@ -29,6 +30,12 @@ function appsClient() {
   if (appsApi) return appsApi;
   appsApi = getKubeConfig().makeApiClient(k8s.AppsV1Api);
   return appsApi;
+}
+
+function batchClient() {
+  if (batchApi) return batchApi;
+  batchApi = getKubeConfig().makeApiClient(k8s.BatchV1Api);
+  return batchApi;
 }
 
 function customClient() {
@@ -295,27 +302,151 @@ function podLaunchImage(pod) {
   return String(pod?.spec?.containers?.[0]?.image || "").trim();
 }
 
-function personalVolumeMounts() {
-  const claimName = String(config.jupyterPersonalPvcName || "").trim();
-  const mountPath = String(config.jupyterPersonalMountPath || "/personal").trim();
-  if (!claimName || !mountPath) {
-    return { mounts: [], volumes: [] };
+export async function ensurePersonalPvAndPvc(identity) {
+  const nfsServer = String(config.jupyterPersonalNfsServer || "").trim();
+  const nfsBasePath = String(config.jupyterPersonalNfsBasePath || "").trim();
+  if (!nfsServer || !nfsBasePath || !identity?.session_id) return null;
+
+  const api = kubeClient();
+  const pvName = `personal-${identity.session_id}`.slice(0, 63);
+  const pvcName = pvName;
+  const nfsPath = `${nfsBasePath.replace(/\/+$/, "")}/${identity.session_id}`;
+  const storage = `${Math.max(1, Number(config.jupyterPersonalDiskGi || 5))}Gi`;
+
+  try {
+    await api.readPersistentVolume({ name: pvName });
+  } catch (error) {
+    if (!isNotFound(error)) throw wrapK8sError(error, `reading PV ${pvName}`);
+    try {
+      await api.createPersistentVolume({
+        body: {
+          metadata: {
+            name: pvName,
+            labels: {
+              "app.kubernetes.io/component": "jupyter-personal",
+              "platform.dev/username": toLabelValue(identity.username, identity.session_id),
+            },
+          },
+          spec: {
+            capacity: { storage },
+            accessModes: ["ReadWriteMany"],
+            persistentVolumeReclaimPolicy: "Retain",
+            storageClassName: "",
+            nfs: { server: nfsServer, path: nfsPath },
+          },
+        },
+      });
+    } catch (err) {
+      throw wrapK8sError(err, `creating PV ${pvName}`);
+    }
   }
-  return {
-    mounts: [
-      {
-        name: "jupyter-personal",
-        mountPath,
-      },
-    ],
-    volumes: [
-      {
-        name: "jupyter-personal",
-        persistentVolumeClaim: {
-          claimName,
+
+  try {
+    await api.readNamespacedPersistentVolumeClaim({
+      namespace: config.k8sUserNamespace,
+      name: pvcName,
+    });
+    return pvcName;
+  } catch (error) {
+    if (!isNotFound(error)) throw wrapK8sError(error, `reading PVC ${pvcName}`);
+  }
+
+  try {
+    await api.createNamespacedPersistentVolumeClaim({
+      namespace: config.k8sUserNamespace,
+      body: {
+        metadata: {
+          name: pvcName,
+          labels: {
+            "app.kubernetes.io/component": "jupyter-personal",
+            "platform.dev/username": toLabelValue(identity.username, identity.session_id),
+          },
+        },
+        spec: {
+          accessModes: ["ReadWriteMany"],
+          resources: { requests: { storage } },
+          storageClassName: "",
+          volumeName: pvName,
         },
       },
-    ],
+    });
+  } catch (err) {
+    throw wrapK8sError(err, `creating PVC ${pvcName}`);
+  }
+
+  return pvcName;
+}
+
+export async function provisionPersonalStorage(username) {
+  const nfsServer = String(config.jupyterPersonalNfsServer || "").trim();
+  const nfsBasePath = String(config.jupyterPersonalNfsBasePath || "").trim();
+  if (!nfsServer || !nfsBasePath) return;
+
+  const identity = buildLabIdentity(username);
+  const sessionId = identity.session_id;
+  const initImage = String(config.jupyterPersonalInitImage || config.jupyterImage).trim();
+  const jobName = `personal-init-${sessionId}`.slice(0, 63);
+  const batch = batchClient();
+
+  try {
+    await batch.createNamespacedJob({
+      namespace: config.k8sUserNamespace,
+      body: {
+        metadata: {
+          name: jobName,
+          labels: { "app.kubernetes.io/component": "personal-storage-init" },
+        },
+        spec: {
+          ttlSecondsAfterFinished: 120,
+          backoffLimit: 3,
+          template: {
+            spec: {
+              restartPolicy: "OnFailure",
+              securityContext: { runAsUser: 0 },
+              containers: [
+                {
+                  name: "mkdir",
+                  image: initImage,
+                  imagePullPolicy: "IfNotPresent",
+                  command: [
+                    "/bin/sh",
+                    "-c",
+                    `mkdir -p /personal-root/${sessionId} && chown 1000:100 /personal-root/${sessionId}`,
+                  ],
+                  volumeMounts: [{ name: "personal-root", mountPath: "/personal-root" }],
+                },
+              ],
+              volumes: [
+                {
+                  name: "personal-root",
+                  nfs: { server: nfsServer, path: nfsBasePath },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+  } catch (err) {
+    if (!isNotFound(err)) {
+      console.error(`[provisionPersonalStorage] mkdir job failed for ${username}:`, err.message);
+    }
+  }
+
+  await ensurePersonalPvAndPvc(identity);
+}
+
+function personalVolumeMounts(identity) {
+  const nfsServer = String(config.jupyterPersonalNfsServer || "").trim();
+  const nfsBasePath = String(config.jupyterPersonalNfsBasePath || "").trim();
+  const mountPath = String(config.jupyterPersonalMountPath || "/personal").trim();
+  if (!nfsServer || !nfsBasePath || !identity?.session_id) {
+    return { mounts: [], volumes: [] };
+  }
+  const pvcName = `personal-${identity.session_id}`.slice(0, 63);
+  return {
+    mounts: [{ name: "jupyter-personal", mountPath }],
+    volumes: [{ name: "jupyter-personal", persistentVolumeClaim: { claimName: pvcName } }],
   };
 }
 
@@ -326,7 +457,8 @@ export async function createOrEnsureSessionPod({ identity, launchProfile }) {
   const jupyterBaseUrl = ingressPathMode ? "/jupyter" : "/";
   const probePath = ingressPathMode ? `${jupyterBaseUrl}/lab` : "/lab";
   const podName = identity.pod_name;
-  const personalStorage = personalVolumeMounts();
+  await ensurePersonalPvAndPvc(identity);
+  const personalStorage = personalVolumeMounts(identity);
 
   let pod = await readPod(podName);
   const desiredImage = String(launchProfile.image || "").trim();

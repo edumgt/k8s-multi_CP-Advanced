@@ -65,8 +65,11 @@ export const config = {
   jupyterWorkspaceRoot: process.env.JUPYTER_WORKSPACE_ROOT || "/workspace/user-home",
   jupyterBootstrapDir: process.env.JUPYTER_BOOTSTRAP_DIR || "/opt/platform/bootstrap-workspace",
   jupyterUserPvcStorageClass: process.env.JUPYTER_USER_PVC_STORAGE_CLASS || "",
-  jupyterPersonalPvcName: process.env.JUPYTER_PERSONAL_PVC_NAME || "",
   jupyterPersonalMountPath: process.env.JUPYTER_PERSONAL_MOUNT_PATH || "/personal",
+  jupyterPersonalNfsServer: process.env.JUPYTER_PERSONAL_NFS_SERVER || "",
+  jupyterPersonalNfsBasePath: process.env.JUPYTER_PERSONAL_NFS_BASE_PATH || "",
+  jupyterPersonalDiskGi: parseNumber(process.env.JUPYTER_PERSONAL_DISK_GI, 5),
+  jupyterPersonalInitImage: process.env.JUPYTER_PERSONAL_INIT_IMAGE || "",
 
   controlPlaneUsername: process.env.CONTROL_PLANE_USERNAME || "admin@test.com",
   controlPlanePassword: process.env.CONTROL_PLANE_PASSWORD || "123456",

@@ -5,6 +5,9 @@ import bcrypt from "bcryptjs";
 import { config } from "../config.js";
 import { User, UserMetric } from "../models/index.js";
 import { getRedis } from "./db.js";
+import { provisionPersonalStorage } from "./k8sService.js";
+import { persistLabIdentity } from "./labIdentityService.js";
+import { buildLabIdentity } from "../utils/labIdentity.js";
 
 const memorySessions = new Map();
 const memoryJupyterRouteAccess = new Map();
@@ -65,13 +68,21 @@ export async function createManagedUser({ username, password, role, displayName 
   }
 
   const passwordHash = await hashPassword(password);
-  return User.create({
+  const user = await User.create({
     username: normalized,
     passwordHash,
     role: normalizedRole,
     displayName: String(displayName || normalized).trim() || normalized,
     builtIn: false,
   });
+
+  await persistLabIdentity(buildLabIdentity(normalized));
+
+  provisionPersonalStorage(normalized).catch((err) =>
+    console.error(`[createManagedUser] personal storage provisioning failed for ${normalized}:`, err.message),
+  );
+
+  return user;
 }
 
 export async function findUser(username) {

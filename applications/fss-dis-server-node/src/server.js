@@ -1,11 +1,12 @@
 import http from "node:http";
 import crypto from "node:crypto";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 import cors from "cors";
 import express from "express";
 import { Server as SocketIOServer } from "socket.io";
-import swaggerUi from "swagger-ui-express";
 
 import { config } from "./config.js";
 import { swaggerSpec } from "./swagger.js";
@@ -53,6 +54,8 @@ import { toDemoUserInfo } from "./utils/formatters.js";
 const app = express();
 const server = http.createServer(app);
 const swaggerCustomJsPath = fileURLToPath(new URL("../public/swagger-custom.js", import.meta.url));
+const _require = createRequire(import.meta.url);
+const swaggerUiDistPath = path.dirname(_require.resolve("swagger-ui-dist/package.json"));
 app.set("trust proxy", true);
 const io = new SocketIOServer(server, {
   cors: {
@@ -96,18 +99,54 @@ app.get("/docs/swagger-custom.js", (_req, res) => {
   res.type("application/javascript");
   res.sendFile(swaggerCustomJsPath);
 });
-app.use(
-  "/docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, {
-    customJs: config.backendBasePath === "/"
-      ? "/docs/swagger-custom.js"
-      : `${config.backendBasePath}/docs/swagger-custom.js`,
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  }),
-);
+app.get("/docs/swagger-ui-init.js", (_req, res) => {
+  const specJson = JSON.stringify(swaggerSpec);
+  res.type("application/javascript").send(`
+window.onload = function () {
+  var options = { swaggerDoc: ${specJson}, customOptions: { persistAuthorization: true } };
+  var url = window.location.search.match(/url=([^&]+)/);
+  url = url && url.length > 1 ? decodeURIComponent(url[1]) : window.location.origin;
+  var swaggerOptions = {
+    spec: options.swaggerDoc,
+    url: options.swaggerUrl || url,
+    dom_id: "#swagger-ui",
+    deepLinking: true,
+    presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+    plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+    layout: "StandaloneLayout",
+  };
+  for (var k in (options.customOptions || {})) { swaggerOptions[k] = options.customOptions[k]; }
+  window.ui = SwaggerUIBundle(swaggerOptions);
+};
+`);
+});
+app.use("/docs", express.static(swaggerUiDistPath, { index: false }));
+app.use("/docs", (_req, res) => {
+  const customJsUrl = config.backendBasePath === "/"
+    ? "/docs/swagger-custom.js"
+    : `${config.backendBasePath}/docs/swagger-custom.js`;
+  res.type("text/html").send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Swagger UI</title>
+  <link rel="stylesheet" type="text/css" href="./swagger-ui.css">
+  <style>
+    html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+    *, *:before, *:after { box-sizing: inherit; }
+    body { margin: 0; background: #fafafa; }
+    .swagger-ui .topbar .download-url-wrapper { display: none }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="./swagger-ui-bundle.js"></script>
+  <script src="./swagger-ui-standalone-preset.js"></script>
+  <script src="./swagger-ui-init.js"></script>
+  <script src="${customJsUrl}"></script>
+</body>
+</html>`);
+});
 
 function asyncHandler(handler) {
   return (req, res, next) => {
