@@ -10,7 +10,3 @@ resources:
 labels:
   - pairs:
       app.kubernetes.io/environment: dev
-
-patches:
-  - path: mongo-scale-down-patch.yaml
-  - path: redis-scale-down-patch.yaml

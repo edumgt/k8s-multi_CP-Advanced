@@ -3,10 +3,8 @@ kind: Kustomization
 
 resources:
   - namespaces.yaml
-  - dis-app.yaml
+  - fss-dis-server-node-web.yaml
   - dynamic-routing.yaml
-  - fss-dis-frontend-subpath-ingress.yaml
-  - headlamp-ingress.yaml
   - mongodb-secret.yaml
   - mongodb.yaml
   - redis-secret.yaml

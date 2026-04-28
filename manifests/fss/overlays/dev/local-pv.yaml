@@ -19,7 +19,7 @@ spec:
             - key: kubernetes.io/hostname
               operator: In
               values:
-                - k8s-worker-2
+                - k8s-worker-3
   hostPath:
     path: /var/lib/fss-dis-platform/pv/fss-mongo-data
     type: DirectoryOrCreate
@@ -45,7 +45,7 @@ spec:
             - key: kubernetes.io/hostname
               operator: In
               values:
-                - k8s-worker-2
+                - k8s-worker-3
   hostPath:
     path: /var/lib/fss-dis-platform/pv/fss-redis-data
     type: DirectoryOrCreate

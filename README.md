@@ -63,9 +63,8 @@ flowchart TB
 | 경로 | 역할 | 실행/빌드 핵심 |
 |---|---|---|
 | `applications/fss-dis-server-node` | DIS 거버넌스 API 서버 | Node.js 22, Express 5 |
-| `applications/fss-dis-frontend` | DIS 프론트엔드 | Vue 3, Quasar, Vite |
 | `applications/jupyter-pod-router` | Jupyter named pod 라우터 | Node.js 22, http-proxy |
-| `applications/jupyter` | 사용자 Jupyter 이미지 베이스 | JupyterLab, pandas, teradatasql |
+| `applications/jupyter` | 사용자 Jupyter 이미지 베이스 | JupyterLab, pandas |
 
 ## manifests 구성 상세
 
@@ -85,7 +84,6 @@ flowchart TB
 | 영역 | 스택 |
 |---|---|
 | Backend (DIS) | Node.js 22, Express 5, Socket.io, Mongoose, ioredis, `@kubernetes/client-node` |
-| Frontend | Vue 3, Quasar, Vite, Axios, Chart.js, AG Grid |
 | Router | Node.js 22, Express 5, http-proxy |
 | Data/Batch | JupyterLab, pandas |
 | Kubernetes | Kustomize overlays(dev/prod), Ingress-NGINX, MetalLB, Calico, Metrics Server |
